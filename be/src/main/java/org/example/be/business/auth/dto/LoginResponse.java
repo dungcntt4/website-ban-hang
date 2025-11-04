@@ -1,4 +1,3 @@
 package org.example.be.business.auth.dto;
 
-public class LoginResponse {
-}
+public record LoginResponse(String accessToken, UserDTO user) {}

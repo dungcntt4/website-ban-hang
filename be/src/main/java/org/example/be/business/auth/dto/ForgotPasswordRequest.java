@@ -1,4 +1,3 @@
 package org.example.be.business.auth.dto;
 
-public class ForgotPasswordRequest {
-}
+public record ForgotPasswordRequest(String email) {}
