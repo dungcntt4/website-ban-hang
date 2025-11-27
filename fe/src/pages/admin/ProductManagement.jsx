@@ -1,175 +1,38 @@
-// src/pages/admin/Dashboard.jsx
+// src/pages/admin/ProductManagement.jsx
 import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../../components/admin/Sidebar.jsx";
 import HeaderAdmin from "../../components/admin/HeaderAdmin.jsx";
+import { apiFetch } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 
-/* ===================== MOCK DATA THEO SCHEMA MỚI ===================== */
-// Brand
-const BRANDS = [
-  { id: 1, name: "ASUS", slug: "asus", image: "/images/brand-asus.png" },
-  { id: 2, name: "Acer", slug: "acer", image: "/images/brand-acer.png" },
-  { id: 3, name: "Dell", slug: "dell", image: "/images/brand-dell.png" },
-];
+/*
+  API /api/admin/products trả về (theo DTO ProductListItemResponse):
 
-// Category
-const CATEGORIES = [
-  { id: 10, name: "Laptop", slug: "laptop", parent_id: null, display_order: 1 },
-  { id: 11, name: "Gaming", slug: "gaming", parent_id: 10, display_order: 2 },
-  { id: 12, name: "Office", slug: "office", parent_id: 10, display_order: 3 },
-];
+  [
+    {
+      id: "uuid",
+      code: "ASUS-TUF-A15-2024",
+      name: "ASUS TUF A15 2024",
+      slug: "asus-tuf-a15-2024",
+      brand: { id: "uuid-brand", name: "ASUS" },
+      categories: ["Gaming", "Laptop"],
+      thumbnailUrl: "https://...",
+      published: true,
+      totalSold: 120,
+      totalReviews: 36,
+      averageRating: 4.6,
+      priceMin: 19990000.0,      // product.price_min
+      salePriceMin: 17990000.0,  // product.sale_price_min
+      stockOnHand: 19,           // SUM(inventory_item.stock_on_hand)
+      skuCount: 3,               // COUNT(product_variant)
+      createdAt: "2025-01-10T08:00:00Z",
+      updatedAt: "2025-02-01T10:00:00Z"
+    },
+    ...
+  ]
+*/
 
-// Product + nối category qua product_category
-const PRODUCTS = [
-  {
-    id: 100,
-    code: "ASUS-TUF-A15-2024",
-    name: "ASUS TUF A15 2024",
-    slug: "asus-tuf-a15-2024",
-    brand_id: 1,
-    is_published: true,
-    short_description: "Ryzen 7 7840HS, RTX 4060, 16GB/512GB",
-    description: "Laptop gaming bền bỉ, màn 144Hz, tản nhiệt tốt.",
-    total_sold: 120,
-    total_reviews: 36,
-    average_rating: 4.6,
-    created_at: "2025-01-10T08:00:00Z",
-    updated_at: "2025-02-01T10:00:00Z",
-    product_category: [{ product_id: 100, category_id: 11 }], // Gaming
-  },
-  {
-    id: 101,
-    code: "DELL-INS-3530",
-    name: "Dell Inspiron 3530",
-    slug: "dell-inspiron-3530",
-    brand_id: 3,
-    is_published: false,
-    short_description: "i5-1335U, 16GB/512GB, văn phòng",
-    description: "Mỏng nhẹ, pin ổn, bàn phím êm.",
-    total_sold: 42,
-    total_reviews: 11,
-    average_rating: 4.2,
-    created_at: "2025-01-18T08:00:00Z",
-    updated_at: "2025-02-02T10:00:00Z",
-    product_category: [{ product_id: 101, category_id: 12 }], // Office
-  },
-];
-
-// Picture
-const PICTURES = [
-  {
-    id: 5001,
-    product_id: 100,
-    url: "https://picsum.photos/seed/p100a/400/300",
-    alt_text: "ASUS A15 - 1",
-  },
-  {
-    id: 5002,
-    product_id: 100,
-    url: "https://picsum.photos/seed/p100b/400/300",
-    alt_text: "ASUS A15 - 2",
-  },
-  {
-    id: 5101,
-    product_id: 101,
-    url: "https://picsum.photos/seed/p101a/400/300",
-    alt_text: "Dell 3530 - 1",
-  },
-];
-
-// Options/values (chưa render tại list)
-const PRODUCT_OPTIONS = [
-  { id: 1, name: "RAM" },
-  { id: 2, name: "SSD" },
-  { id: 3, name: "Màu sắc" },
-];
-const PRODUCT_OPTION_VALUES = [
-  { id: 11, option_id: 1, value: "16GB" },
-  { id: 12, option_id: 1, value: "32GB" },
-  { id: 21, option_id: 2, value: "512GB" },
-  { id: 22, option_id: 2, value: "1TB" },
-  { id: 31, option_id: 3, value: "Đen" },
-];
-
-// Variants (SKU) + giá
-const PRODUCT_VARIANTS = [
-  {
-    id: 1001,
-    product_id: 100,
-    sku: "A15-16-512-BL",
-    name: "16GB/512GB Đen",
-    cost_price: 19990000,
-    discount_price: 22990000,
-    price: 24990000,
-    is_active: true,
-    created_at: "2025-01-10",
-    updated_at: "2025-01-10",
-  },
-  {
-    id: 1002,
-    product_id: 100,
-    sku: "A15-32-1TB-BL",
-    name: "32GB/1TB Đen",
-    cost_price: 23990000,
-    discount_price: null,
-    price: 28990000,
-    is_active: true,
-    created_at: "2025-01-10",
-    updated_at: "2025-01-10",
-  },
-  {
-    id: 1011,
-    product_id: 101,
-    sku: "INS3530-16-512-GR",
-    name: "16GB/512GB Xám",
-    cost_price: 10990000,
-    discount_price: 11990000,
-    price: 12990000,
-    is_active: false,
-    created_at: "2025-01-18",
-    updated_at: "2025-01-18",
-  },
-];
-
-// Inventory theo SKU
-const INVENTORY_ITEMS = [
-  { id: 1, variant_id: 1001, stock_on_hand: 12, stock_reserved: 1 },
-  { id: 2, variant_id: 1002, stock_on_hand: 7, stock_reserved: 0 },
-  { id: 3, variant_id: 1011, stock_on_hand: 5, stock_reserved: 0 },
-];
-
-/* ===================== TIỆN ÍCH GHÉP DỮ LIỆU ===================== */
-function joinBrand(product) {
-  return BRANDS.find((b) => b.id === product.brand_id) || null;
-}
-function mainPicture(productId) {
-  const pics = PICTURES.filter((p) => p.product_id === productId);
-  return pics[0]?.url || "https://via.placeholder.com/80x80?text=IMG";
-}
-function categoryNames(product) {
-  const ids = (product.product_category || []).map((pc) => pc.category_id);
-  return CATEGORIES.filter((c) => ids.includes(c.id)).map((c) => c.name);
-}
-function variantsOf(productId) {
-  return PRODUCT_VARIANTS.filter((v) => v.product_id === productId);
-}
-function stockForVariant(variantId) {
-  const inv = INVENTORY_ITEMS.find((i) => i.variant_id === variantId);
-  return inv ? inv.stock_on_hand : 0;
-}
-function aggregateStock(productId) {
-  return variantsOf(productId).reduce(
-    (sum, v) => sum + stockForVariant(v.id),
-    0
-  );
-}
-function priceRange(productId) {
-  const vs = variantsOf(productId);
-  if (!vs.length) return { min: 0, max: 0 };
-  const displayPrices = vs.map((v) => (v.discount_price ?? v.price) || 0);
-  return { min: Math.min(...displayPrices), max: Math.max(...displayPrices) };
-}
-
-/* ===================== PAGE ===================== */
 export default function ProductManagement() {
   // ---- State layout ----
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -183,68 +46,142 @@ export default function ProductManagement() {
   const [showCatDD, setShowCatDD] = useState(false);
   const [showStatusDD, setShowStatusDD] = useState(false);
 
-  // ---- Dữ liệu hiển thị ----
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
+  // ---- Dữ liệu hiển thị từ API ----
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // ---- State cho thao tác (xem/sửa/xoá) ----
   const [selected, setSelected] = useState(null);
 
-  // Mock fetch & tính toán
+  // ===== Fetch dữ liệu từ BE =====
   useEffect(() => {
-    const enriched = PRODUCTS.map((p) => {
-      const brand = joinBrand(p);
-      const stock = aggregateStock(p.id);
-      const pr = priceRange(p.id);
-      const cats = categoryNames(p);
-      return {
-        ...p,
-        brand,
-        categories: cats, // mảng tên danh mục
-        picture: mainPicture(p.id), // ảnh đại diện
-        stock_on_hand: stock, // tổng tồn kho (từ inventory_item)
-        price_min: pr.min, // range giá theo variants
-        price_max: pr.max,
-        sku_count: variantsOf(p.id).length,
-      };
-    });
-    enriched.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    setData(enriched);
-  }, []);
+    if (authLoading) return;
 
-  // Lọc
+    if (!user) {
+      setData([]);
+      return;
+    }
+
+    async function fetchProducts() {
+      try {
+        setLoading(true);
+        setLoadError(null);
+
+        const res = await apiFetch("/api/admin/products", {
+          method: "GET",
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || "Fetch products failed");
+        }
+
+        const json = await res.json();
+
+        const sorted = [...json].sort((a, b) => {
+          const da = new Date(a.updatedAt || a.createdAt || 0);
+          const db = new Date(b.updatedAt || b.createdAt || 0);
+          return db - da;
+        });
+
+        setData(sorted);
+      } catch (err) {
+        console.error("Lỗi load danh sách sản phẩm:", err);
+        setLoadError(err.message || "Không thể tải danh sách sản phẩm");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, [authLoading, user]);
+
+  // ===== Lọc dữ liệu theo search / category / status =====
   const filtered = useMemo(() => {
     return data.filter((p) => {
       const bySearch =
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.code.toLowerCase().includes(search.toLowerCase());
+        (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (p.code || "").toLowerCase().includes(search.toLowerCase());
+
+      const productCategories = Array.isArray(p.categories)
+        ? p.categories
+        : [];
+
       const byCat =
-        categoryFilter === "all" || p.categories.includes(categoryFilter);
+        categoryFilter === "all" || productCategories.includes(categoryFilter);
+
       const byStatus =
         statusFilter === "all" ||
-        (statusFilter === "published" && p.is_published) ||
-        (statusFilter === "hidden" && !p.is_published);
+        (statusFilter === "published" && p.published) ||
+        (statusFilter === "hidden" && !p.published);
+
       return bySearch && byCat && byStatus;
     });
   }, [data, search, categoryFilter, statusFilter]);
 
-  // ===== Handlers (ở TRONG component) =====
+  // Lấy list tên danh mục duy nhất để build filter dropdown
+  const allCategoryNames = useMemo(() => {
+    const set = new Set();
+    data.forEach((p) => {
+      (p.categories || []).forEach((name) => set.add(name));
+    });
+    return Array.from(set);
+  }, [data]);
+
+  // ===== Handlers =====
   function onView(p) {
     setSelected(p);
-    alert(`Xem nhanh: ${p.name} (${p.code})`);
+    navigate("/product-management/products/create", {
+      state: { mode: "view", productId: p.id },
+    });
   }
+
   function onEdit(p) {
     setSelected(p);
-    alert(`Sửa (mock): ${p.name}`);
+    navigate("/product-management/products/create", {
+      state: { mode: "edit", productId: p.id },
+    });
   }
-  function onDelete(p) {
-    if (confirm(`Xoá sản phẩm "${p.name}"?`)) {
-      setData((prev) => prev.filter((x) => x.id !== p.id));
+
+async function onDelete(p) {
+  if (!window.confirm(`Xoá sản phẩm "${p.name}"?`)) {
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`/api/admin/products/${p.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || "Xoá sản phẩm thất bại");
     }
+
+    // Nếu BE trả JSON có message/id thì đọc thêm cũng được, không bắt buộc
+    // const data = await res.json();
+    // console.log("Delete product:", data);
+
+    // Xoá khỏi state FE
+    setData((prev) => prev.filter((x) => x.id !== p.id));
+
+    alert(`Đã xoá sản phẩm "${p.name}"`);
+  } catch (err) {
+    console.error("Lỗi khi xoá sản phẩm:", err);
+    alert("Lỗi khi xoá sản phẩm: " + err.message);
   }
+}
+
+
   function togglePublish(p) {
+    // TODO: Gọi API PATCH/PUT để đổi published ở BE
     setData((prev) =>
       prev.map((x) =>
-        x.id === p.id ? { ...x, is_published: !x.is_published } : x
+        x.id === p.id ? { ...x, published: !x.published } : x
       )
     );
   }
@@ -313,21 +250,19 @@ export default function ProductManagement() {
                         Tất cả danh mục
                       </button>
                     </li>
-                    {[...new Set(data.flatMap((p) => p.categories))].map(
-                      (name) => (
-                        <li key={name}>
-                          <button
-                            className="dropdown-item"
-                            onClick={() => {
-                              setCategoryFilter(name);
-                              setShowCatDD(false);
-                            }}
-                          >
-                            {name}
-                          </button>
-                        </li>
-                      )
-                    )}
+                    {allCategoryNames.map((name) => (
+                      <li key={name}>
+                        <button
+                          className="dropdown-item"
+                          onClick={() => {
+                            setCategoryFilter(name);
+                            setShowCatDD(false);
+                          }}
+                        >
+                          {name}
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 )}
               </div>
@@ -386,22 +321,40 @@ export default function ProductManagement() {
                 )}
               </div>
 
-              <button
+              {/* Thêm sản phẩm */}
+              <Link
+                to="/product-management/products/create"
+                state={{ mode: "create" }}
                 className="btn text-dark"
                 style={{ backgroundColor: "#ede734" }}
               >
                 <i className="fas fa-plus me-2"></i> Thêm Sản phẩm
-              </button>
+              </Link>
             </div>
           </div>
+
+          {/* Error / Loading */}
+          {loading && (
+            <div className="mb-3 text-muted small">
+              Đang tải danh sách sản phẩm...
+            </div>
+          )}
+          {loadError && (
+            <div className="mb-3 text-danger small">
+              Lỗi tải danh sách: {loadError}
+            </div>
+          )}
 
           {/* Bảng */}
           <div
             className="shadow rounded overflow-hidden w-100"
             id="product-list-card"
           >
-            <div className="card-header bg-white border-bottom px-4 py-3">
+            <div className="card-header bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
               <h3 className="h5 mb-0">Danh sách sản phẩm</h3>
+              <span className="small text-muted">
+                Tổng: {filtered.length} sản phẩm
+              </span>
             </div>
 
             <div className="table-responsive">
@@ -442,7 +395,10 @@ export default function ProductManagement() {
                         >
                           <div style={{ width: 44, height: 44, flexShrink: 0 }}>
                             <img
-                              src={p.picture}
+                              src={
+                                p.thumbnailUrl ||
+                                "https://via.placeholder.com/80x80?text=IMG"
+                              }
                               alt={p.name}
                               className="rounded"
                               style={{
@@ -465,6 +421,40 @@ export default function ProductManagement() {
                             >
                               {p.code} • {p.brand?.name}
                             </div>
+
+                            {/* Giá min / saleMin */}
+                            {(p.priceMin != null ||
+                              p.salePriceMin != null) && (
+                              <div className="small mt-1">
+                                {p.salePriceMin != null ? (
+                                  <>
+                                    <span className="fw-semibold text-danger">
+                                      {Number(
+                                        p.salePriceMin
+                                      ).toLocaleString("vi-VN")}
+                                      ₫
+                                    </span>
+                                    {p.priceMin != null && (
+                                      <span className="text-muted text-decoration-line-through ms-1">
+                                        {Number(
+                                          p.priceMin
+                                        ).toLocaleString("vi-VN")}
+                                        ₫
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  p.priceMin != null && (
+                                    <span className="fw-semibold">
+                                      {Number(
+                                        p.priceMin
+                                      ).toLocaleString("vi-VN")}
+                                      ₫
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -473,46 +463,48 @@ export default function ProductManagement() {
                       <td className="py-3 small text-secondary">
                         <div
                           className="text-truncate"
-                          title={p.categories.join(", ")}
+                          title={(p.categories || []).join(", ")}
                         >
-                          {p.categories.join(", ")}
+                          {(p.categories || []).join(", ")}
                         </div>
                       </td>
 
                       {/* Kho */}
                       <td className="py-3 text-center small text-secondary">
-                        {p.stock_on_hand}
+                        {p.stockOnHand ?? 0}
                       </td>
 
                       {/* SKU count */}
                       <td className="py-3 text-center small text-secondary">
-                        {p.sku_count}
+                        {p.skuCount ?? 0}
                       </td>
 
-                      
                       {/* Sold */}
                       <td className="py-3 text-center small text-secondary">
-                        {p.total_sold}
+                        {p.totalSold ?? 0}
                       </td>
 
-                      {/* Trạng thái */}
+                      {/* Trạng thái + rating */}
                       <td className="py-3">
                         <span
                           className={`badge ${
-                            p.is_published ? "bg-success" : "bg-secondary"
+                            p.published ? "bg-success" : "bg-secondary"
                           } bg-opacity-10 px-2 py-1`}
                         >
                           <span
                             className={
-                              p.is_published ? "text-success" : "text-secondary"
+                              p.published ? "text-success" : "text-secondary"
                             }
                           >
-                            {p.is_published ? "Published" : "Hidden"}
+                            {p.published ? "Published" : "Hidden"}
                           </span>
                         </span>
                         <span className="ms-2 small text-muted">
-                          ★ {p.average_rating?.toFixed(1) ?? "0"} /{" "}
-                          {p.total_reviews}
+                          ★{" "}
+                          {p.averageRating != null
+                            ? Number(p.averageRating).toFixed(1)
+                            : "0"}{" "}
+                          / {p.totalReviews ?? 0}
                         </span>
                       </td>
 
@@ -540,31 +532,12 @@ export default function ProductManagement() {
                           >
                             <i className="fas fa-trash-alt"></i>
                           </button>
-
-                          {/* Toggle publish/hidden */}
-                          <div
-                            className="form-check form-switch ms-2"
-                            title={
-                              p.is_published
-                                ? "Ẩn sản phẩm"
-                                : "Hiển thị sản phẩm"
-                            }
-                          >
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={p.is_published}
-                              onChange={() => togglePublish(p)}
-                              style={{ cursor: "pointer" }}
-                            />
-                          </div>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {!filtered.length && (
+                  {!filtered.length && !loading && (
                     <tr>
-                      {/* colSpan = số cột header (8) */}
                       <td className="ps-4 py-4 text-muted" colSpan={7}>
                         Không có sản phẩm phù hợp.
                       </td>
@@ -576,7 +549,12 @@ export default function ProductManagement() {
           </div>
 
           <style>{`
-            #product-list-card{width:100%!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
+            #product-list-card{
+              width:100%!important;
+              max-width:100%!important;
+              margin-left:0!important;
+              margin-right:0!important
+            }
           `}</style>
         </main>
       </div>

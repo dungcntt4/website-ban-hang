@@ -1,0 +1,21 @@
+.dropdown-toggle::after {
+    display: none !important;
+  }
+  
+  .main-header {
+    position: fixed;    /* giữ header cố định */
+    top: 0; left: 0; right: 0;
+    width: 100%;
+    z-index: 999;
+    transition: transform .3s ease-in-out, box-shadow .3s;
+  }
+  
+  .main-header.hidden {
+    transform: translateY(-100%);  /* trượt lên khỏi viewport */
+  }
+  
+  .main-header.shown {
+    transform: translateY(0);      /* trượt xuống vị trí ban đầu */
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  }
+  

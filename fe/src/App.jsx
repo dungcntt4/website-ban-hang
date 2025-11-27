@@ -8,7 +8,9 @@ import Dashboard from './pages/admin/Dashboard'
 import ProductManagement from './pages/admin/ProductManagement'
 import AttributeManagement from './pages/admin/AttributeMangement'
 import OptionManagement from './pages/admin/OptionManagement'
-
+import ProductCreate from './pages/admin/ProductCreate'
+import SpecAttributeCreate from './pages/admin/SpecAttributeCreate'
+import OptionCreate from './pages/admin/OptionCreate'
 export default function App() {
   return (
     <Routes>
@@ -18,7 +20,9 @@ export default function App() {
       <Route path='/product-management/products' element={<ProductManagement />} />
       <Route path='/product-management/attributes' element={<AttributeManagement />} />
       <Route path='/product-management/options' element={<OptionManagement />} />
-
+      <Route path='/product-management/products/create' element={<ProductCreate />} />
+      <Route path='/product-management/attributes/create' element={<SpecAttributeCreate/>}/>
+      <Route path='/product-management/options/create'element={<OptionCreate/>}/>
       {/* Chỉ cần đăng nhập */}
       <Route
         path="/me"

@@ -19,7 +19,7 @@ function GoogleLoginButton() {
           const user = await loginWithGoogle(response.credential) // ⬅️ nhận user
           // ⬇️ điều hướng theo role
           if (user?.role === 'ROLE_ADMIN') navigate('/dashboard', { replace: true })
-          else navigate('/me', { replace: true })
+          else navigate('/', { replace: true })
         } catch (e) {
           toast.error(e.message || 'Google Sign-In thất bại')
         }
