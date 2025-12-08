@@ -105,7 +105,7 @@ function OptionManagement() {
           toggleUserDropdown={toggleUserDropdown}
         />
 
-        <main className="flex-grow-1 overflow-auto bg-light p-4">
+        <main className="flex-grow-1 overflow-auto bg-light p-3">
           {/* Toolbar */}
           <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
             <div className="input-group" style={{ maxWidth: 360 }}>

@@ -11,10 +11,15 @@ import OptionManagement from './pages/admin/OptionManagement'
 import ProductCreate from './pages/admin/ProductCreate'
 import SpecAttributeCreate from './pages/admin/SpecAttributeCreate'
 import OptionCreate from './pages/admin/OptionCreate'
+import InventoryManagement from './pages/admin/InventoryManagement'
+import InventoryCreate from './pages/admin/InventoryCreate'
+import InventoryDetail from './pages/admin/InventoryDetail'
+import ProductPage from './pages/user/ProductPage'
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/products/:category" element={<ProductPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path='/product-management/products' element={<ProductManagement />} />
@@ -23,6 +28,9 @@ export default function App() {
       <Route path='/product-management/products/create' element={<ProductCreate />} />
       <Route path='/product-management/attributes/create' element={<SpecAttributeCreate/>}/>
       <Route path='/product-management/options/create'element={<OptionCreate/>}/>
+      <Route path="/product-management/inventory" element={<InventoryManagement />} />
+      <Route path="/product-management/inventory/create" element={<InventoryCreate />} />
+      <Route path="/product-management/inventory/:id" element={<InventoryDetail />}/>
       {/* Chỉ cần đăng nhập */}
       <Route
         path="/me"

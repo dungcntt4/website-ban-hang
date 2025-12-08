@@ -20,5 +20,7 @@ public interface ProductSpecificationValueRepository extends JpaRepository<Produ
     boolean existsBySpecificationValueId(UUID specValueId);
 
     boolean existsBySpecificationValueAttributeId(UUID attributeId);
+
+    List<ProductSpecificationValue> findByProduct_Id(UUID productId);
 }
 

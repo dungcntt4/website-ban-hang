@@ -427,7 +427,7 @@ function Header({ setShowLoginModal, setShowSearch }) {
                 {children.length > 0 && (
                   <div className="mega-menu">
                     {children.map((child) => (
-                      <a key={child.id} href={`/category/${child.slug}`}>
+                      <a key={child.id} href={`/products/${child.slug}`}>
                         {child.name}
                       </a>
                     ))}

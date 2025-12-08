@@ -78,8 +78,7 @@ function ProductCreate() {
         .filter((c) => c.parent_id != null) // chỉ những thằng có cha
         .sort(
           (a, b) =>
-            (a.display_order ?? 0) -
-            (b.display_order ?? 0)
+            (a.display_order ?? 0) - (b.display_order ?? 0)
         ),
     [categories]
   );
@@ -250,8 +249,6 @@ function ProductCreate() {
       prev.filter((g) => g.groupId !== groupId)
     );
     setVariants([]);
-    setInventoryCurrent({});
-    setInventoryDelta({});
   }
 
   function toggleOptionValue(groupId, valueId) {
@@ -267,10 +264,6 @@ function ProductCreate() {
   }
 
   const [variants, setVariants] = useState([]);
-  // tồn kho hiện có (chỉ dùng để hiển thị khi edit)
-  const [inventoryCurrent, setInventoryCurrent] = useState({}); // {variantId: currentStock}
-  // số lượng nhập thêm (gửi lên BE, BE sẽ cộng thêm – create: = tồn ban đầu, edit: = số nhập thêm)
-  const [inventoryDelta, setInventoryDelta] = useState({}); // {variantId: delta}
 
   function handleBasicChange(field, value) {
     if (isViewMode) return;
@@ -408,7 +401,6 @@ function ProductCreate() {
         included: true,
         sku,
         name,
-        cost_price: null,
         discount_price: null,
         price: null,
         is_active: true,
@@ -417,8 +409,6 @@ function ProductCreate() {
     });
 
     setVariants(nextVariants);
-    setInventoryCurrent({});
-    setInventoryDelta({});
   }
 
   function toggleVariantIncluded(variantId) {
@@ -435,11 +425,6 @@ function ProductCreate() {
     setVariants((prev) =>
       prev.map((v) => (v.id === variantId ? { ...v, [field]: value } : v))
     );
-  }
-
-  function setStock(variantId, stock) {
-    if (isViewMode) return;
-    setInventoryDelta((prev) => ({ ...prev, [variantId]: Number(stock || 0) }));
   }
 
   // ====== TÍNH KHOẢNG GIÁ & BIẾN THỂ RẺ NHẤT ======
@@ -629,12 +614,9 @@ function ProductCreate() {
           attrIdsToLoad.map((id) => ensureSpecValuesLoaded(id))
         );
 
-        // variants & options & inventory
+        // variants & options
         const variantsFromApi = Array.isArray(data.variants)
           ? data.variants
-          : [];
-        const inventoryFromApi = Array.isArray(data.inventory)
-          ? data.inventory
           : [];
 
         // selectedOptionGroups từ variants
@@ -707,7 +689,6 @@ function ProductCreate() {
             included: v.is_active ?? v.active ?? true,
             sku: v.sku,
             name: v.name,
-            cost_price: v.cost_price ?? null,
             discount_price: v.discount_price ?? null,
             price: v.price ?? null,
             is_active: v.is_active ?? v.active ?? true,
@@ -715,19 +696,6 @@ function ProductCreate() {
           };
         });
         setVariants(nextVariants);
-
-        const currentMap = {};
-        inventoryFromApi.forEach((inv) => {
-          const sku = inv.variant_sku || inv.sku;
-          if (!sku) return;
-          const stock = inv.stock_on_hand ?? inv.stockOnHand ?? 0;
-          const variant = nextVariants.find((v) => v.sku === sku);
-          if (variant) {
-            currentMap[variant.id] = stock;
-          }
-        });
-        setInventoryCurrent(currentMap);
-        setInventoryDelta({});
       } catch (err) {
         console.error("Lỗi khi load chi tiết sản phẩm:", err);
         alert("Không load được chi tiết sản phẩm: " + err.message);
@@ -767,11 +735,6 @@ function ProductCreate() {
       if (discount != null && discount > price)
         errs.push(
           `Giảm giá không được lớn hơn giá bán ở SKU ${v.sku || v.name}`
-        );
-      const delta = Number(inventoryDelta[v.id] ?? 0);
-      if (delta < 0 || Number.isNaN(delta))
-        errs.push(
-          `Số lượng tồn kho nhập thêm không hợp lệ ở SKU ${v.sku || v.name}`
         );
     });
 
@@ -819,7 +782,6 @@ function ProductCreate() {
       variants: included.map((v) => ({
         sku: v.sku,
         name: v.name,
-        cost_price: v.cost_price ? Number(v.cost_price) : null,
         discount_price: v.discount_price ? Number(v.discount_price) : null,
         price: v.price ? Number(v.price) : null,
         is_active: !!v.is_active,
@@ -828,12 +790,7 @@ function ProductCreate() {
           option_value_id: o.valueId,
         })),
       })),
-      // BE đang hiểu stock_on_hand là "số lượng tăng thêm"
-      inventory: included.map((v) => ({
-        variant_sku: v.sku,
-        stock_on_hand: Number(inventoryDelta[v.id] ?? 0),
-        stock_reserved: 0,
-      })),
+      // ❌ không gửi inventory nữa, tồn kho sẽ đi qua luồng Phiếu nhập
     };
 
     try {
@@ -1315,22 +1272,18 @@ function ProductCreate() {
                 >
                   <colgroup>
                     <col style={{ width: "6%" }} />
-                    <col style={{ width: "24%" }} />
-                    <col style={{ width: "14%" }} />
-                    <col style={{ width: "14%" }} />
-                    <col style={{ width: "14%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "34%" }} />
+                    <col style={{ width: "20%" }} />
+                    <col style={{ width: "20%" }} />
+                    <col style={{ width: "20%" }} />
                   </colgroup>
                   <thead>
                     <tr className="border-bottom small text-secondary text-uppercase">
                       <th className="ps-3">Chọn</th>
                       <th>Cấu hình</th>
                       <th>SKU *</th>
-                      <th>Giá vốn</th>
                       <th>Giảm giá</th>
                       <th>Giá bán *</th>
-                      <th>{isEditMode ? "Nhập thêm tồn kho" : "Tồn kho *"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1368,22 +1321,6 @@ function ProductCreate() {
                             type="number"
                             className="form-control"
                             placeholder="0"
-                            value={v.cost_price ?? ""}
-                            onChange={(e) =>
-                              updateVariantField(
-                                v.id,
-                                "cost_price",
-                                e.target.value ? Number(e.target.value) : null
-                              )
-                            }
-                            disabled={formDisabled}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            className="form-control"
-                            placeholder="0"
                             value={v.discount_price ?? ""}
                             onChange={(e) =>
                               updateVariantField(
@@ -1411,33 +1348,11 @@ function ProductCreate() {
                             disabled={formDisabled}
                           />
                         </td>
-                        <td>
-                          <input
-                            type="number"
-                            className="form-control"
-                            placeholder="0"
-                            value={
-                              isViewMode
-                                ? inventoryCurrent[v.id] ?? 0
-                                : inventoryDelta[v.id] ?? ""
-                            }
-                            onChange={(e) => setStock(v.id, e.target.value)}
-                            disabled={formDisabled}
-                          />
-                          {isEditMode && (
-                            <div className="small text-muted mt-1">
-                              Hiện có:{" "}
-                              {inventoryCurrent[v.id] != null
-                                ? inventoryCurrent[v.id]
-                                : 0}
-                            </div>
-                          )}
-                        </td>
                       </tr>
                     ))}
                     {!variants.length && (
                       <tr>
-                        <td className="ps-3 py-3 text-muted" colSpan={7}>
+                        <td className="ps-3 py-3 text-muted" colSpan={5}>
                           Chưa có biến thể. Hãy chọn nhóm option & giá trị rồi
                           bấm <b>Sinh biến thể</b>.
                         </td>

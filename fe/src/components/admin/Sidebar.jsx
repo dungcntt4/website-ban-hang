@@ -1,6 +1,8 @@
+// Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+
 const Sidebar = ({ collapsed, onSelectMenu }) => {
   const menuItems = [
     {
@@ -40,12 +42,12 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
       to: "/reports&statistics",
     },
   ];
+
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [openProducts, setOpenProducts] = useState(false);
   const location = useLocation();
 
-  // CSS inline
   const styles = {
     sidebar: {
       width: collapsed ? "80px" : "250px",
@@ -83,10 +85,10 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
   };
 
   useEffect(() => {
-  if (location.pathname.startsWith('/product-management')) {
-    setOpenProducts(true);     // luôn mở khi ở nhánh product-management
-  }
-}, [location.pathname]);
+    if (location.pathname.startsWith("/product-management")) {
+      setOpenProducts(true); // luôn mở khi ở nhánh product-management
+    }
+  }, [location.pathname]);
 
   return (
     <div className="d-flex flex-column text-white" style={styles.sidebar}>
@@ -151,17 +153,26 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
                         {
                           key: "product-list",
                           label: "Sản phẩm",
-                          to: "/product-management/products", end: true,
+                          to: "/product-management/products",
+                          end: true,
                         },
                         {
                           key: "product-attributes",
                           label: "Thuộc tính",
-                          to: "/product-management/attributes", end: true,
+                          to: "/product-management/attributes",
+                          end: true,
                         },
                         {
                           key: "product-options",
                           label: "Option",
-                          to: "/product-management/options", end: true,
+                          to: "/product-management/options",
+                          end: true,
+                        },
+                        {
+                          key: "product-inventory",
+                          label: "Kho",
+                          to: "/product-management/inventory",
+                          end: false,
                         },
                       ].map((sub) => (
                         <li key={sub.key} className="nav-item px-2">
@@ -246,9 +257,9 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
           }}
           onClick={async () => {
             try {
-              await logout(); // ⬅️ gọi logout() từ AuthContext (xoá cookie + clear state)
+              await logout();
             } finally {
-              window.location.replace("/"); // ⬅️ quay lại trang chủ
+              window.location.replace("/");
             }
           }}
         >

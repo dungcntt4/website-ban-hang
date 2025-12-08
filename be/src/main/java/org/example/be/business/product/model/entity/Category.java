@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.example.be.common.util.Auditable;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -37,5 +39,7 @@ public class Category extends Auditable {
     @Column(name = "display_order")
     private Integer displayOrder;
 
-    // getters/setters
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    private List<ProductCategory> productCategories = new ArrayList<>();
+
 }

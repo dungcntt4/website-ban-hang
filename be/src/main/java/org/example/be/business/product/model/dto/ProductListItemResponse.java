@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,11 +34,14 @@ public class ProductListItemResponse {
 
     private String brandName;         // join brand
 
-    // nếu sau này m join category thì nhét tên category vào đây
+    // tên các category của product
     private List<String> categories;
 
-    private long stockOnHand;         // SUM(inventory_item.stock_on_hand) của các variant
-    private long skuCount;            // số variant của product
+    // Tổng tồn kho hiện tại (sau này tính từ bảng lô nhập, không phải inventory_item)
+    private long stockOnHand;
+
+    // Số lượng biến thể (SKU) của product
+    private long skuCount;
 
     private Instant createdAt;
     private Instant updatedAt;

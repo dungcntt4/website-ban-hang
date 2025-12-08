@@ -16,7 +16,6 @@ public class ProductDetailResponse {
     private List<PictureInfo> pictures;
     private List<SpecificationInfo> specifications;
     private List<VariantInfo> variants;
-    private List<InventoryInfo> inventory;
 
     @Data
     public static class ProductInfo {
@@ -66,9 +65,6 @@ public class ProductDetailResponse {
         private String sku;
         private String name;
 
-        @JsonProperty("cost_price")
-        private BigDecimal costPrice;
-
         @JsonProperty("discount_price")
         private BigDecimal discountPrice;
 
@@ -96,15 +92,5 @@ public class ProductDetailResponse {
         private String optionValueLabel;
     }
 
-    @Data
-    public static class InventoryInfo {
-        @JsonProperty("variant_sku")
-        private String variantSku;
 
-        @JsonProperty("stock_on_hand")
-        private Long stockOnHand;
-
-        @JsonProperty("stock_reserved")
-        private Long stockReserved;
-    }
 }

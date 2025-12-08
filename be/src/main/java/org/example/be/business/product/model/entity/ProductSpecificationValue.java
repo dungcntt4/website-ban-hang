@@ -10,7 +10,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.util.UUID;
 
 @Entity
-@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "product_specification_value",
@@ -31,4 +30,28 @@ public class ProductSpecificationValue extends Auditable {
     private SpecificationValue specificationValue;
 
     // getters/setters
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public SpecificationValue getSpecificationValue() {
+        return specificationValue;
+    }
+
+    public void setSpecificationValue(SpecificationValue specificationValue) {
+        this.specificationValue = specificationValue;
+    }
 }
