@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +20,12 @@ public class ProductPublicService {
     private final SpecificationAttributeRepository specAttrRepo;
     private final SpecificationValueRepository specValueRepo;
     private final ProductSpecificationValueRepository psvRepo;
+
+    private final PictureRepository pictureRepo;
+    private final ProductVariantRepository productVariantRepo;
+    private final InventoryRepository inventoryItemRepo;
+    private final ProductReviewRepository reviewRepo;
+
 
     // ================== PUBLIC API: /api/public/products/{category} ==================
     @Transactional(readOnly = true)
@@ -164,4 +171,96 @@ public class ProductPublicService {
 
         return dto;
     }
+
+    @Transactional(readOnly = true)
+    public ProductDetailPublicRespDTO getDetail(UUID id) {
+
+        // ===== 1. Lấy Product =====
+        Product product = productRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        // ===== 2. Build DTO chính =====
+        ProductDetailPublicRespDTO dto = new ProductDetailPublicRespDTO();
+        dto.setId(product.getId());
+        dto.setName(product.getName());
+        dto.setSlug(product.getSlug());
+        dto.setDescription(product.getDescription());
+        dto.setShortDescription(product.getShortDescription());
+        dto.setPriceMin(product.getPriceMin());
+        dto.setSalePriceMin(product.getSalePriceMin());
+
+        // ===== 3. Brand =====
+        BrandListItemResponse brandDTO = new BrandListItemResponse();
+        brandDTO.setId(product.getBrand().getId());
+        brandDTO.setName(product.getBrand().getName());
+        brandDTO.setSlug(product.getBrand().getSlug());
+        brandDTO.setImage(product.getBrand().getImage());
+        dto.setBrand(brandDTO);
+
+        // ===== 4. Images (từ bảng Picture) =====
+        List<ImagePublicRespDTO> imageDTOs = pictureRepo.findByProductId(product.getId())
+                .stream()
+                .map(pic -> new ImagePublicRespDTO(pic.getUrl()))
+                .toList();
+        dto.setImages(imageDTOs);
+
+        // ===== 5. Variants =====
+        List<VariantPublicRespDTO> variants = productVariantRepo.findByProductId(product.getId())
+                .stream()
+                .map(v -> {
+                    VariantPublicRespDTO vv = new VariantPublicRespDTO();
+                    vv.setId(v.getId());
+                    vv.setName(v.getName());
+                    vv.setSku(v.getSku());
+                    vv.setPrice(v.getPrice());
+                    vv.setDiscountPrice(v.getDiscountPrice());
+
+                    InventoryItem inv = inventoryItemRepo.findByVariantId(v.getId()).orElse(null);
+                    vv.setStock(inv != null ? inv.getStockOnHand() : 0);
+
+                    return vv;
+                })
+                .toList();
+        dto.setVariants(variants);
+
+        // ===== 6. Specifications =====
+        Map<String, List<String>> specMap =
+                psvRepo.findByProduct_Id(product.getId())
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                psv -> psv.getSpecificationValue().getAttribute().getName(),
+                                Collectors.mapping(
+                                        psv -> psv.getSpecificationValue().getValueText(),
+                                        Collectors.toList()
+                                )
+                        ));
+        dto.setSpecifications(specMap);
+
+        // ===== 7. Reviews + JOIN User =====
+        List<ReviewPublicRespDTO> reviewDTOs =
+                reviewRepo.findReviewsWithUser(product.getId()).stream().map(r -> {
+                    ReviewPublicRespDTO rv = new ReviewPublicRespDTO();
+                    rv.setId(r.getId());
+                    rv.setRating(r.getRating());
+                    rv.setComment(r.getComment());
+                    rv.setCreatedAt(r.getCreatedAt());
+
+                    String email = r.getUserEmail();
+                    String displayName = (email != null) ? email.split("@")[0] : "User";
+                    rv.setUserName(displayName);
+
+                    return rv;
+                }).toList();
+
+        dto.setReviews(reviewDTOs);
+        dto.setTotalReviews(reviewDTOs.size());
+
+        double avg = reviewDTOs.isEmpty()
+                ? 0
+                : reviewDTOs.stream().mapToInt(ReviewPublicRespDTO::getRating).average().orElse(0);
+        dto.setAverageRating(avg);
+
+        return dto;
+    }
+
 }

@@ -15,11 +15,23 @@ import InventoryManagement from './pages/admin/InventoryManagement'
 import InventoryCreate from './pages/admin/InventoryCreate'
 import InventoryDetail from './pages/admin/InventoryDetail'
 import ProductPage from './pages/user/ProductPage'
+import ProductDetail from './pages/user/ProductDetail'
+import Cart from './pages/user/Cart'
+import Checkout from './pages/user/CheckOut'
+import UserProfile from './pages/user/UserProfile'
+import VNPayReturn from './pages/user/VNPayReturn'
+import PaymentReturn from './pages/user/PaymentReturn'
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path='/cart' element={<Cart/>}/>
+      <Route path='/checkout' element={<Checkout/>}/>
+      <Route path='/profile' element={<UserProfile/>}/>
+      <Route path="/payment/return" element={<PaymentReturn />} />
+      <Route path="/vnpay-return" element={<VNPayReturn />} />
       <Route path="/products/:category" element={<ProductPage />} />
+      <Route path="/products/detail/:slug" element={<ProductDetail />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path='/product-management/products' element={<ProductManagement />} />

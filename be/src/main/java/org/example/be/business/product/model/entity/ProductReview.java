@@ -29,8 +29,8 @@ public class ProductReview extends Auditable {
     @Column(name = "comment", columnDefinition = "text")
     private String comment;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "BINARY(16)")
-    private UUID userId;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "product_id", nullable = false)
     private Product product;

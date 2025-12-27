@@ -26,7 +26,7 @@ public class SecurityConfig { // class cấu hình //
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép các endpoint public
-                        .requestMatchers("/api/auth/**", "/api/public/**", "/error").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/public/**", "/error","/api/payment/vnpay_return").permitAll()
                         // (tuỳ) tài liệu API
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Admin

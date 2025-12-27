@@ -23,7 +23,8 @@ function Header({ setShowLoginModal, setShowSearch }) {
     try {
       await logout();
     } finally {
-      window.location.replace("/");
+      // ✅ FIX: không reload app
+      navigate("/", { replace: true });
     }
   }
 
@@ -131,7 +132,8 @@ function Header({ setShowLoginModal, setShowSearch }) {
           <div className="row">
             {/* Logo */}
             <div className="col-3 text-start">
-              <a href="/">
+              {/* ✅ FIX: <a> -> <Link> */}
+              <Link to="/">
                 <img
                   src="/images/LogoNgang.png"
                   alt="Home"
@@ -141,7 +143,7 @@ function Header({ setShowLoginModal, setShowSearch }) {
                   }}
                   className="card-img-top"
                 />
-              </a>
+              </Link>
             </div>
 
             {/* Search */}
@@ -203,7 +205,6 @@ function Header({ setShowLoginModal, setShowSearch }) {
               >
                 <div className="sign-in-up-btns">
                   {!user ? (
-                    // Chưa đăng nhập
                     <div className="dropdown">
                       <button
                         className="btn btn-light dropdown-toggle d-flex align-items-center"
@@ -262,7 +263,6 @@ function Header({ setShowLoginModal, setShowSearch }) {
                       </ul>
                     </div>
                   ) : (
-                    // Đã đăng nhập
                     <div className="dropdown">
                       <button
                         className="btn btn-light dropdown-toggle d-flex align-items-center"
@@ -299,7 +299,7 @@ function Header({ setShowLoginModal, setShowSearch }) {
                           <button
                             className="dropdown-item"
                             onClick={() => {
-                              navigate("/me");
+                              navigate("/profile");
                             }}
                           >
                             <i className="fa-regular fa-user"></i> Thông tin cá
@@ -326,96 +326,83 @@ function Header({ setShowLoginModal, setShowSearch }) {
 
         {/* ===== NAVBAR + DROPDOWN 1 CỘT ===== */}
         <style>{`
-  .navbar-nav {
-    background-color: #004aad;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-  }
+          .navbar-nav {
+            background-color: #004aad;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+          }
 
-  .navbar-nav .nav-item {
-    position: relative;
-    margin: 0 1.5rem;
-  }
+          .navbar-nav .nav-item {
+            position: relative;
+            margin: 0 1.5rem;
+          }
 
-  .navbar-nav .nav-link {
-    display: inline-block;
-    text-transform: uppercase;
-    font-size: 18px;
-    color: #ffffff;
-    padding: 0.75rem 0;
-    position: relative;
-    cursor: default;
-  }
+          .navbar-nav .nav-link {
+            display: inline-block;
+            text-transform: uppercase;
+            font-size: 18px;
+            color: #ffffff;
+            padding: 0.75rem 0;
+            position: relative;
+            cursor: default;
+          }
 
-  .navbar-nav .nav-link::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 3px;
-    background-color: #f15a24;
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
+          .navbar-nav .nav-link::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            background-color: #f15a24;
+            border-radius: 2px;
+            transition: width 0.3s;
+          }
 
-  .navbar-nav .nav-item:hover .nav-link::after,
-  .navbar-nav .nav-link.active::after {
-    width: 100%;
-  }
+          .navbar-nav .nav-item:hover .nav-link::after,
+          .navbar-nav .nav-link.active::after {
+            width: 100%;
+          }
 
-  .mega-menu {
-    position: absolute;
-    top: 45px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 220px;
-    background: #ffffff;
-    margin-top: 6px;
-    border-radius: 10px;
-    padding: 8px 0;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    display: none;
-    z-index: 999;
-  }
+          .mega-menu {
+            position: absolute;
+            top: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+            min-width: 220px;
+            background: #ffffff;
+            margin-top: 6px;
+            border-radius: 10px;
+            padding: 8px 0;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 999;
+          }
 
-  .nav-item:hover .mega-menu {
-    display: block;
-  }
+          .nav-item:hover .mega-menu {
+            display: block;
+          }
 
-  .mega-menu a {
-    display: block;
-    padding: 7px 18px;
-    font-size: 15px;
-    color: #004aad;
-    text-decoration: none;
-    white-space: nowrap;
-  }
+          .mega-menu a {
+            display: block;
+            padding: 7px 18px;
+            font-size: 15px;
+            color: #004aad;
+            text-decoration: none;
+            white-space: nowrap;
+          }
 
-  .mega-menu a:hover {
-    background: #f3f6ff;
-    color: #004aad;
-  }
-
-  @media (max-width: 768px) {
-    .navbar-nav {
-      flex-wrap: wrap;
-    }
-    .navbar-nav .nav-item {
-      margin: 0.5rem;
-    }
-    .mega-menu {
-      left: 0;
-      transform: none;
-    }
-  }
-`}</style>
+          .mega-menu a:hover {
+            background: #f3f6ff;
+            color: #004aad;
+          }
+        `}</style>
 
         <ul className="navbar-nav">
           {rootCategories.map((root) => {
@@ -426,10 +413,11 @@ function Header({ setShowLoginModal, setShowSearch }) {
 
                 {children.length > 0 && (
                   <div className="mega-menu">
+                    {/* ✅ FIX: <a> -> <Link> */}
                     {children.map((child) => (
-                      <a key={child.id} href={`/products/${child.slug}`}>
+                      <Link key={child.id} to={`/products/${child.slug}`}>
                         {child.name}
-                      </a>
+                      </Link>
                     ))}
                   </div>
                 )}

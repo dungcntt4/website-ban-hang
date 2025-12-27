@@ -2,6 +2,7 @@ package org.example.be.business.product.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.be.business.product.model.dto.PagedProductListPublicResponse;
+import org.example.be.business.product.model.dto.ProductDetailPublicRespDTO;
 import org.example.be.business.product.service.ProductPublicService;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,5 +34,10 @@ public class ProductPublicController {
                 pageSize,
                 sort
         );
+    }
+
+    @GetMapping("/detail/{id}")
+    public ProductDetailPublicRespDTO getDetail(@PathVariable UUID id) {
+        return productPublicService.getDetail(id);
     }
 }

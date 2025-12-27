@@ -1,6 +1,7 @@
 package org.example.be.business.product.repository;
 
 import org.example.be.business.product.model.entity.InventoryItem;
+import org.example.be.business.product.model.entity.ProductVariant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,5 +18,7 @@ public interface InventoryRepository extends JpaRepository<InventoryItem, UUID> 
     @Query("delete from InventoryItem i where i.variant.product.id = :productId")
     void deleteByVariantProductId(@Param("productId") UUID productId);
     Optional<InventoryItem> findByVariantId(UUID variantId);
+
+    Optional<InventoryItem> findByVariant(ProductVariant variant);
 }
 

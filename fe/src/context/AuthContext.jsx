@@ -41,6 +41,7 @@ export function AuthProvider({ children }) {
       try {
         const tok = await doRefreshOnce().catch(() => null)
         if (tok) {
+          setAuthState({ accessToken: tok })
           setAccessToken(tok)
           await loadMe()
         } else {
