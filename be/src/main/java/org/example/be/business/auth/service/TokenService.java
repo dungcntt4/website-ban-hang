@@ -43,10 +43,13 @@ public class TokenService { // quản lý cấp/rotate/revoke refresh token //
 
         String u1 = UUID.randomUUID().toString().replace("-", ""); // 32
         String u2 = UUID.randomUUID().toString().replace("-", ""); // 32
-        String refreshRaw = u1 + u2; // 64 ký tự (<=72) // raw refresh gửi cho client //
+        String secret = u1 + u2; // phần bí mật
+
+        String refreshRaw = familyId + "." + secret;
+
         log.info("Issued raw = {}", refreshRaw);
 
-        String hash = encoder.encode(refreshRaw); // băm refresh để lưu DB (không lưu raw) //
+        String hash = encoder.encode(secret); // băm refresh để lưu DB (không lưu raw) //
 
 
         RefreshToken rt = RefreshToken.builder() // build entity //
@@ -72,8 +75,15 @@ public class TokenService { // quản lý cấp/rotate/revoke refresh token //
         System.out.println("test: "+test);
         Instant now = Instant.now();
 
-        // 1️⃣ Lọc sơ bộ trên DB (revoked=false & còn hạn)
-        List<RefreshToken> candidates = repo.findByRevokedFalseAndExpiresAtAfter(now);
+        String[] parts = refreshRaw.split("\\.", 2);
+        if (parts.length != 2) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        }
+        String familyId = parts[0];
+        String secret   = parts[1];
+
+        List<RefreshToken> candidates =
+                repo.findByFamilyIdAndRevokedFalseAndExpiresAtAfter(familyId, now);
         if (candidates.isEmpty()) {
             log.warn("Không có token nào hợp lệ trong DB (revoked=false & expiresAt>now)");
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
@@ -81,7 +91,7 @@ public class TokenService { // quản lý cấp/rotate/revoke refresh token //
 
         // 2️⃣ So khớp từng hash trong tập nhỏ bằng BCrypt
         RefreshToken current = candidates.stream()
-                .filter(rt -> encoder.matches(refreshRaw, rt.getTokenHash()))
+                .filter(rt -> encoder.matches(secret, rt.getTokenHash()))
                 .findFirst()
                 .orElseThrow(() -> {
                     log.warn("Không khớp refresh token nào với raw {}", refreshRaw.substring(0, 8));
