@@ -21,6 +21,8 @@ import Checkout from './pages/user/CheckOut'
 import UserProfile from './pages/user/UserProfile'
 import VNPayReturn from './pages/user/VNPayReturn'
 import PaymentReturn from './pages/user/PaymentReturn'
+import OrderManagement from './pages/admin/OrderManagement'
+import ReportsStatistics from './pages/admin/ReportsStatistics'
 export default function App() {
   return (
     <Routes>
@@ -43,6 +45,9 @@ export default function App() {
       <Route path="/product-management/inventory" element={<InventoryManagement />} />
       <Route path="/product-management/inventory/create" element={<InventoryCreate />} />
       <Route path="/product-management/inventory/:id" element={<InventoryDetail />}/>
+      <Route path="/order-management" element={<OrderManagement/>}/>
+      <Route path="/reports&statistics" element={<ReportsStatistics/>}/>
+      
       {/* Chỉ cần đăng nhập */}
       <Route
         path="/me"

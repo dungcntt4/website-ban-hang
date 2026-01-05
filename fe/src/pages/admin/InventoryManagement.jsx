@@ -178,7 +178,7 @@ function InventoryManagement() {
                       <th className="py-3 text-end">Số dòng</th>
                       <th className="py-3 text-end">Tổng SL</th>
                       <th className="py-3 text-end">Tổng tiền</th>
-                      <th className="py-3 text-start">Thao tác</th>
+                      <th className="py-3 text-center">#</th>
                     </tr>
                   </thead>
 
@@ -214,7 +214,7 @@ function InventoryManagement() {
                           <td className="py-3 text-end">
                             {formatMoney(r.totalAmount)}
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 text-center">
                             <button
                               type="button"
                               className="btn btn-link p-0 text-secondary"
@@ -225,7 +225,6 @@ function InventoryManagement() {
                               }
                             >
                               <i className="fas fa-eye me-1" />
-                              Xem chi tiết
                             </button>
                           </td>
                         </tr>

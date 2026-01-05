@@ -2,11 +2,17 @@ package org.example.be.business.product.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.example.be.business.product.model.dto.CategoryListItemResponse;
 import org.example.be.business.product.model.dto.ProductCreateRequest;
 import org.example.be.business.product.model.dto.ProductDetailResponse;
 import org.example.be.business.product.model.dto.ProductListItemResponse;
 import org.example.be.business.product.model.entity.*;
 import org.example.be.business.product.repository.*;
+import org.example.be.common.util.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +28,6 @@ public class ProductService {
     private final ProductRepository productRepo;
     private final PictureRepository pictureRepo;
     private final ProductVariantRepository variantRepo;
-    // ❌ BỎ InventoryRepository: tồn kho sẽ do luồng Phiếu nhập xử lý
-    // private final InventoryRepository inventoryRepo;
     private final SpecificationValueRepository specValueRepo;
     private final ProductSpecificationValueRepository productSpecRepo;
     private final BrandRepository brandRepo;
@@ -31,6 +35,7 @@ public class ProductService {
     private final ProductCategoryRepository productCategoryRepo;
     private final ProductVariantOptionValueRepository variantOptionValueRepo;
     private final ProductOptionValueRepository optionValueRepo;
+    private final InventoryItemRepository inventoryItemRepository;
 
     @Transactional
     public UUID create(ProductCreateRequest req) {
@@ -105,15 +110,11 @@ public class ProductService {
             pv.setProduct(p);
             pv.setSku(v.getSku());
             pv.setName(v.getName());
-            // ❌ KHÔNG còn costPrice
-            // pv.setCostPrice(v.getCost_price());
+
             pv.setDiscountPrice(v.getDiscount_price());
             pv.setPrice(v.getPrice());
             pv.setActive(v.isActive());
             variantRepo.save(pv);
-
-            // ❌ KHÔNG tạo InventoryItem ở đây nữa
-            // Thay vào đó, tồn kho sẽ do luồng Phiếu nhập (purchase_receipt) xử lý
 
             // Lưu mapping option cho variant
             if (v.getOptions() != null) {
@@ -152,81 +153,132 @@ public class ProductService {
 
         return p.getId();
     }
-
     @Transactional(readOnly = true)
-    public List<ProductListItemResponse> getAdminProducts() {
-        List<Product> products = productRepo.findByDeletedFalse();
+    public PageResponse<ProductListItemResponse> getAdminProducts(
+            int page,
+            int size,
+            String search,
+            Boolean published,
+            UUID categoryId
+    ) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
 
+        Page<Product> productPage = productRepo.searchAdminProducts(
+                (search == null || search.trim().isEmpty()) ? null : search.trim(),
+                published,
+                categoryId,
+                pageable
+        );
+
+        List<Product> products = productPage.getContent();
         if (products.isEmpty()) {
-            return Collections.emptyList();
+            return new PageResponse<>(
+                    List.of(),
+                    productPage.getNumber(),
+                    productPage.getSize(),
+                    productPage.getTotalElements(),
+                    productPage.getTotalPages()
+            );
         }
 
-        // ===== 1) map productId -> variants =====
-        Map<UUID, List<ProductVariant>> variantMap = variantRepo.findAll().stream()
-                .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
-
-        // ❌ Bỏ inventoryMap: tồn kho sẽ tính từ bảng lô sau (purchase_receipt_item)
-        // Map<UUID, List<InventoryItem>> inventoryMap = inventoryRepo.findAll().stream()
-        //         .collect(Collectors.groupingBy(i -> i.getVariant().getId()));
-
-        // ===== 2) map productId -> category names =====
+        // ===== map productId -> variants =====
+        Map<UUID, List<ProductVariant>> variantMap =
+                variantRepo.findByProductIn(products)
+                        .stream()
+                        .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
+        Map<UUID, InventoryItem> inventoryMap =
+                inventoryItemRepository
+                        .findByVariantIn(
+                                variantMap.values()
+                                        .stream()
+                                        .flatMap(List::stream)
+                                        .toList()
+                        )
+                        .stream()
+                        .collect(Collectors.toMap(
+                                inv -> inv.getVariant().getId(),
+                                inv -> inv
+                        ));
+        // ===== map productId -> category DTO =====
         Set<UUID> productIds = products.stream()
                 .map(Product::getId)
                 .collect(Collectors.toSet());
 
-        Map<UUID, List<String>> categoryNameMap = productCategoryRepo.findByProductIdIn(productIds).stream()
-                .collect(Collectors.groupingBy(
-                        pc -> pc.getProduct().getId(),
-                        Collectors.mapping(
-                                pc -> pc.getCategory().getName(),
-                                Collectors.toList()
-                        )
-                ));
+        Map<UUID, List<CategoryListItemResponse>> categoryMap =
+                productCategoryRepo.findByProductIdIn(productIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                pc -> pc.getProduct().getId(),
+                                Collectors.mapping(
+                                        pc -> {
+                                            var c = pc.getCategory();
+                                            return new CategoryListItemResponse(
+                                                    c.getId(),
+                                                    c.getName(),
+                                                    c.getSlug(),
+                                                    c.getParent() != null
+                                                            ? c.getParent().getId()
+                                                            : null,
+                                                    c.getDisplayOrder()
+                                            );
+                                        },
+                                        Collectors.toList()
+                                )
+                        ));
 
-        List<ProductListItemResponse> result = new ArrayList<>();
 
-        for (Product p : products) {
-            List<ProductVariant> variants = variantMap.getOrDefault(p.getId(), Collections.emptyList());
-            long skuCount = variants.size();
+        List<ProductListItemResponse> content = products.stream()
+                .map(p -> {
+                    List<ProductVariant> variants =
+                            variantMap.getOrDefault(p.getId(), List.of());
+                    long stockOnHand = variants.stream()
+                            .mapToLong(v -> {
+                                InventoryItem inv = inventoryMap.get(v.getId());
+                                if (inv == null) return 0L;
+                                return inv.getStockOnHand() - inv.getStockReserved();
+                            })
+                            .sum();
+                    return ProductListItemResponse.builder()
+                            .id(p.getId())
+                            .code(p.getCode())
+                            .name(p.getName())
+                            .slug(p.getSlug())
+                            .thumbnailUrl(p.getThumbnailUrl())
+                            .published(p.isPublished())
+                            .priceMin(p.getPriceMin())
+                            .salePriceMin(p.getSalePriceMin())
+                            .totalSold(p.getTotalSold())
+                            .totalReviews(p.getTotalReviews())
+                            .averageRating(p.getAverageRating())
+                            .brandName(
+                                    p.getBrand() != null
+                                            ? p.getBrand().getName()
+                                            : null
+                            )
+                            .categories(
+                                    categoryMap.getOrDefault(p.getId(), List.of())
+                            )
+                            .stockOnHand(stockOnHand)
+                            .skuCount(variants.size())
+                            .createdAt(p.getCreatedAt())
+                            .updatedAt(p.getUpdatedAt())
+                            .build();
+                })
+                .toList();
 
-            // ❌ Tạm thời không tính tổng tồn kho ở đây (sẽ dùng bảng lô sau này)
-            long totalStockOnHand = 0L;
-
-            // danh sách tên category (distinct)
-            List<String> categoryNames = categoryNameMap.getOrDefault(p.getId(), Collections.emptyList())
-                    .stream()
-                    .distinct()
-                    .toList();
-
-            ProductListItemResponse dto = ProductListItemResponse.builder()
-                    .id(p.getId())
-                    .code(p.getCode())
-                    .name(p.getName())
-                    .slug(p.getSlug())
-                    .thumbnailUrl(p.getThumbnailUrl())
-                    .published(p.isPublished())
-                    .priceMin(p.getPriceMin())
-                    .salePriceMin(p.getSalePriceMin())
-                    .totalSold(p.getTotalSold())
-                    .totalReviews(p.getTotalReviews())
-                    .averageRating(p.getAverageRating())
-                    .brandName(p.getBrand() != null ? p.getBrand().getName() : null)
-                    .categories(categoryNames)
-                    .stockOnHand(totalStockOnHand)   // hiện set 0, sau có bảng lô sẽ tính lại
-                    .skuCount(skuCount)
-                    .createdAt(p.getCreatedAt())
-                    .updatedAt(p.getUpdatedAt())
-                    .build();
-            result.add(dto);
-        }
-
-        // sort mới nhất lên đầu
-        result.sort(Comparator.comparing(ProductListItemResponse::getUpdatedAt,
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                .reversed());
-
-        return result;
+        return new PageResponse<>(
+                content,
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalElements(),
+                productPage.getTotalPages()
+        );
     }
+
 
     @Transactional(readOnly = true)
     public ProductDetailResponse getDetail(UUID id) {
@@ -360,7 +412,6 @@ public class ProductService {
 
         productRepo.save(p);
 
-        // ===== 2. update categories (xoá hết, tạo lại) =====
         productCategoryRepo.deleteByProductId(p.getId());
 
         List<UUID> categoryIds = Optional.ofNullable(req.getProduct().getCategories())
@@ -383,7 +434,6 @@ public class ProductService {
             }
         }
 
-        // ===== 3. pictures: clear & recreate =====
         pictureRepo.deleteByProductId(p.getId());
         for (var pic : req.getPictures()) {
             Picture img = new Picture();
@@ -393,7 +443,6 @@ public class ProductService {
             pictureRepo.save(img);
         }
 
-        // ===== 4. specifications: clear & recreate =====
         productSpecRepo.deleteByProductId(p.getId());
         for (var s : req.getSpecifications()) {
             SpecificationValue value = specValueRepo.findById(s.getSpecification_value_id())
@@ -404,7 +453,6 @@ public class ProductService {
             productSpecRepo.save(link);
         }
 
-        // ===== 5. load variants hiện có =====
         List<ProductVariant> oldVariants = variantRepo.findByProductId(p.getId());
         Map<String, ProductVariant> variantMapBySku = oldVariants.stream()
                 .collect(Collectors.toMap(ProductVariant::getSku, v -> v));
@@ -413,7 +461,6 @@ public class ProductService {
                 .map(ProductVariant::getId)
                 .toList();
 
-        // ===== 5.1. load toàn bộ option hiện có của các variant này (để không insert trùng) =====
         List<ProductVariantOptionValue> existingVovs =
                 oldVariantIds.isEmpty()
                         ? List.of()
@@ -426,21 +473,14 @@ public class ProductService {
                         + ":" + vov.getOptionValue().getId())
                 .collect(Collectors.toSet());
 
-        // ❌ Bỏ toàn bộ inventory hiện có: tồn kho không update ở đây nữa
-        // List<InventoryItem> existingInventories = inventoryRepo.findByVariantProductId(p.getId());
-        // Map<UUID, InventoryItem> invByVariantId = existingInventories.stream() ...
 
         // ===== 6. update / create variants & recompute priceMin/salePriceMin =====
         BigDecimal bestEffectivePrice = null;
         BigDecimal displayBasePrice   = null;
         BigDecimal displaySalePrice   = null;
 
-        // ❌ Bỏ map inventory trong request theo SKU
-        // Map<String, ProductCreateRequest.InventoryDTO> invMap = ...
-
         for (var v : req.getVariants()) {
 
-            // ----- 6.1. tìm hoặc tạo variant theo SKU -----
             ProductVariant pv = variantMapBySku.get(v.getSku());
             if (pv == null) {
                 pv = new ProductVariant();
@@ -450,18 +490,13 @@ public class ProductService {
             }
 
             pv.setName(v.getName());
-            // ❌ Bỏ costPrice
-            // pv.setCostPrice(v.getCost_price());
             pv.setDiscountPrice(v.getDiscount_price());
             pv.setPrice(v.getPrice());
             pv.setActive(v.isActive());
 
             variantRepo.save(pv);
 
-            // ----- 6.2. BỎ INVENTORY: không cộng thêm tồn kho ở ProductService -----
-            // tồn kho sẽ được cập nhật qua luồng Phiếu nhập (purchase_receipt)
 
-            // ----- 6.3. OPTIONS: chỉ thêm cái mới, không xoá option cũ, không insert trùng -----
             if (v.getOptions() != null && !v.getOptions().isEmpty()) {
 
                 for (var optDto : v.getOptions()) {
@@ -488,7 +523,19 @@ public class ProductService {
                 }
             }
 
-            // ----- 6.4. tính giá hiệu dụng -----
+            Set<String> requestSkus = req.getVariants() == null
+                    ? Set.of()
+                    : req.getVariants().stream()
+                    .map(ProductCreateRequest.VariantDTO::getSku)
+                    .collect(Collectors.toSet());
+
+            for (ProductVariant dbVariant : oldVariants) {
+                if (!requestSkus.contains(dbVariant.getSku())) {
+                    dbVariant.setActive(false);
+                    variantRepo.save(dbVariant);
+                }
+            }
+
             BigDecimal price = v.getPrice();
             BigDecimal discountPrice = v.getDiscount_price();
             BigDecimal effectivePrice = (discountPrice != null ? discountPrice : price);
@@ -502,7 +549,6 @@ public class ProductService {
             }
         }
 
-        // ===== 7. cập nhật priceMin / salePriceMin của product =====
         p.setPriceMin(displayBasePrice);
         p.setSalePriceMin(displaySalePrice);
         productRepo.save(p);

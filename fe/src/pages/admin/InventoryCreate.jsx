@@ -259,7 +259,7 @@ export default function InventoryCreate() {
                           </option>
                           {variants.map((v) => (
                             <option key={v.id} value={v.id}>
-                              {v.sku} — {v.productName} — {v.variantName}
+                              {v.productName} — {v.variantName}
                             </option>
                           ))}
                         </select>

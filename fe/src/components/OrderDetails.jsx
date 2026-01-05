@@ -120,7 +120,7 @@ export default function OrderDetails({ orderDT, onClose }) {
                 <thead className="text-secondary small">
                   <tr>
                     <th>Sản phẩm</th>
-                    <th>Size</th>
+                    <th>SKU</th>
                     <th className="text-end">Giá</th>
                     <th className="text-center">SL</th>
                     <th className="text-end">Tổng</th>
@@ -129,7 +129,7 @@ export default function OrderDetails({ orderDT, onClose }) {
                 </thead>
                 <tbody>
                   {orderDT.items.map((item) => {
-                    const canReview = canReviewMap[item.id];
+                    const canReview = item.canReview === true||canReviewMap[item.id];
                     const pv = item.productVariantDTO;
 
                     return (
@@ -145,7 +145,7 @@ export default function OrderDetails({ orderDT, onClose }) {
                             {pv.productName}
                           </div>
                         </td>
-                        <td>{pv.size?.replace("SIZE_", "")}</td>
+                        <td>{pv.sku?.replace("SKU_", "")}</td>
                         <td className="text-end">
                           {item.unitPrice.toLocaleString()}₫
                         </td>

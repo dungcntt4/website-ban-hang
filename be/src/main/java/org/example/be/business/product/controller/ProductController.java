@@ -5,6 +5,7 @@ import org.example.be.business.product.model.dto.ProductCreateRequest;
 import org.example.be.business.product.model.dto.ProductDetailResponse;
 import org.example.be.business.product.model.dto.ProductListItemResponse;
 import org.example.be.business.product.service.ProductService;
+import org.example.be.common.util.PageResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,9 +27,25 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductListItemResponse>> getProductsForAdmin() {
-        List<ProductListItemResponse> result = productService.getAdminProducts();
-        return ResponseEntity.ok(result);
+    public ResponseEntity<PageResponse<ProductListItemResponse>> getProductsForAdmin(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID categoryId
+    ) {
+        Boolean published = null;
+        if ("published".equalsIgnoreCase(status)) published = true;
+        if ("hidden".equalsIgnoreCase(status)) published = false;
+        return ResponseEntity.ok(
+                productService.getAdminProducts(
+                        page,
+                        size,
+                        search,
+                        published,
+                        categoryId
+                )
+        );
     }
 
     // ====== DETAIL ======

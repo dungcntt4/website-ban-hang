@@ -27,4 +27,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 """)
     Optional<UserProfile> findDefaultWithUser(Long userId);
 
+    Optional<UserProfile> findByUserIdAndDefaultProfileTrue(Long userId);
+
+
 }

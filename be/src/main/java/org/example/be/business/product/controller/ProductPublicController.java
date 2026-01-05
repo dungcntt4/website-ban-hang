@@ -40,4 +40,13 @@ public class ProductPublicController {
     public ProductDetailPublicRespDTO getDetail(@PathVariable UUID id) {
         return productPublicService.getDetail(id);
     }
+
+    @GetMapping("/search")
+    public PagedProductListPublicResponse searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "12") int pageSize
+    ) {
+        return productPublicService.search(keyword, pageNum, pageSize);
+    }
 }

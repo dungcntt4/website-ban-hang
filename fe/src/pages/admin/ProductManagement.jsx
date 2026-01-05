@@ -6,33 +6,6 @@ import HeaderAdmin from "../../components/admin/HeaderAdmin.jsx";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 
-/*
-  API /api/admin/products trả về (theo DTO ProductListItemResponse):
-
-  [
-    {
-      id: "uuid",
-      code: "ASUS-TUF-A15-2024",
-      name: "ASUS TUF A15 2024",
-      slug: "asus-tuf-a15-2024",
-      brand: { id: "uuid-brand", name: "ASUS" },
-      categories: ["Gaming", "Laptop"],
-      thumbnailUrl: "https://...",
-      published: true,
-      totalSold: 120,
-      totalReviews: 36,
-      averageRating: 4.6,
-      priceMin: 19990000.0,      // product.price_min
-      salePriceMin: 17990000.0,  // product.sale_price_min
-      stockOnHand: 19,           // SUM(inventory_item.stock_on_hand)
-      skuCount: 3,               // COUNT(product_variant)
-      createdAt: "2025-01-10T08:00:00Z",
-      updatedAt: "2025-02-01T10:00:00Z"
-    },
-    ...
-  ]
-*/
-
 export default function ProductManagement() {
   // ---- State layout ----
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -53,44 +26,47 @@ export default function ProductManagement() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
-
+  const [page, setPage] = useState(0); // 0-based
+  const [size] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   // ---- State cho thao tác (xem/sửa/xoá) ----
   const [selected, setSelected] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   // ===== Fetch dữ liệu từ BE =====
   useEffect(() => {
     if (authLoading) return;
-
-    if (!user) {
-      setData([]);
-      return;
-    }
+    if (!user) return;
 
     async function fetchProducts() {
       try {
         setLoading(true);
         setLoadError(null);
 
-        const res = await apiFetch("/api/admin/products", {
-          method: "GET",
+        const params = new URLSearchParams({
+          page: String(page),
+          size: String(size),
         });
 
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(msg || "Fetch products failed");
+        if (search.trim()) params.append("search", search.trim());
+        if (categoryFilter !== "all") {
+          params.append("categoryId", categoryFilter);
         }
+
+        if (statusFilter !== "all") params.append("status", statusFilter);
+        // statusFilter đang là "published" | "hidden" | "all"
+
+        const res = await apiFetch(`/api/admin/products?${params.toString()}`);
+
+        if (!res.ok) throw new Error(await res.text());
 
         const json = await res.json();
 
-        const sorted = [...json].sort((a, b) => {
-          const da = new Date(a.updatedAt || a.createdAt || 0);
-          const db = new Date(b.updatedAt || b.createdAt || 0);
-          return db - da;
-        });
-
-        setData(sorted);
+        setData(json.content || []);
+        setTotalPages(json.totalPages || 0);
+        setTotalElements(json.totalElements || 0);
       } catch (err) {
-        console.error("Lỗi load danh sách sản phẩm:", err);
         setLoadError(err.message || "Không thể tải danh sách sản phẩm");
       } finally {
         setLoading(false);
@@ -98,30 +74,24 @@ export default function ProductManagement() {
     }
 
     fetchProducts();
-  }, [authLoading, user]);
+  }, [authLoading, user, page, size, search, categoryFilter, statusFilter]);
 
-  // ===== Lọc dữ liệu theo search / category / status =====
-  const filtered = useMemo(() => {
-    return data.filter((p) => {
-      const bySearch =
-        (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
-        (p.code || "").toLowerCase().includes(search.toLowerCase());
-
-      const productCategories = Array.isArray(p.categories)
-        ? p.categories
-        : [];
-
-      const byCat =
-        categoryFilter === "all" || productCategories.includes(categoryFilter);
-
-      const byStatus =
-        statusFilter === "all" ||
-        (statusFilter === "published" && p.published) ||
-        (statusFilter === "hidden" && !p.published);
-
-      return bySearch && byCat && byStatus;
-    });
-  }, [data, search, categoryFilter, statusFilter]);
+  useEffect(() => {
+    setPage(0);
+  }, [search, categoryFilter, statusFilter]);
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await apiFetch("/api/public/categories");
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        setCategories(json);
+      } catch (e) {
+        console.error("Load categories failed", e);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   // Lấy list tên danh mục duy nhất để build filter dropdown
   const allCategoryNames = useMemo(() => {
@@ -147,42 +117,39 @@ export default function ProductManagement() {
     });
   }
 
-async function onDelete(p) {
-  if (!window.confirm(`Xoá sản phẩm "${p.name}"?`)) {
-    return;
-  }
-
-  try {
-    const res = await apiFetch(`/api/admin/products/${p.id}`, {
-      method: "DELETE",
-    });
-
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(msg || "Xoá sản phẩm thất bại");
+  async function onDelete(p) {
+    if (!window.confirm(`Xoá sản phẩm "${p.name}"?`)) {
+      return;
     }
 
-    // Nếu BE trả JSON có message/id thì đọc thêm cũng được, không bắt buộc
-    // const data = await res.json();
-    // console.log("Delete product:", data);
+    try {
+      const res = await apiFetch(`/api/admin/products/${p.id}`, {
+        method: "DELETE",
+      });
 
-    // Xoá khỏi state FE
-    setData((prev) => prev.filter((x) => x.id !== p.id));
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Xoá sản phẩm thất bại");
+      }
 
-    alert(`Đã xoá sản phẩm "${p.name}"`);
-  } catch (err) {
-    console.error("Lỗi khi xoá sản phẩm:", err);
-    alert("Lỗi khi xoá sản phẩm: " + err.message);
+      // Nếu BE trả JSON có message/id thì đọc thêm cũng được, không bắt buộc
+      // const data = await res.json();
+      // console.log("Delete product:", data);
+
+      // Xoá khỏi state FE
+      setData((prev) => prev.filter((x) => x.id !== p.id));
+
+      alert(`Đã xoá sản phẩm "${p.name}"`);
+    } catch (err) {
+      console.error("Lỗi khi xoá sản phẩm:", err);
+      alert("Lỗi khi xoá sản phẩm: " + err.message);
+    }
   }
-}
-
 
   function togglePublish(p) {
     // TODO: Gọi API PATCH/PUT để đổi published ở BE
     setData((prev) =>
-      prev.map((x) =>
-        x.id === p.id ? { ...x, published: !x.published } : x
-      )
+      prev.map((x) => (x.id === p.id ? { ...x, published: !x.published } : x))
     );
   }
 
@@ -235,10 +202,18 @@ async function onDelete(p) {
                 >
                   {categoryFilter === "all"
                     ? "Tất cả danh mục"
-                    : categoryFilter}
+                    : categories.find((c) => c.id === categoryFilter)?.name}
                 </button>
+
                 {showCatDD && (
-                  <ul className="dropdown-menu show">
+                  <ul
+                    className="dropdown-menu show"
+                    style={{
+                      maxHeight: "300px",
+                      overflowY: "auto",
+                      minWidth: "220px",
+                    }}
+                  >
                     <li>
                       <button
                         className="dropdown-item"
@@ -250,16 +225,17 @@ async function onDelete(p) {
                         Tất cả danh mục
                       </button>
                     </li>
-                    {allCategoryNames.map((name) => (
-                      <li key={name}>
+
+                    {categories.map((c) => (
+                      <li key={c.id}>
                         <button
                           className="dropdown-item"
                           onClick={() => {
-                            setCategoryFilter(name);
+                            setCategoryFilter(c.id); // ✅ UUID
                             setShowCatDD(false);
                           }}
                         >
-                          {name}
+                          {c.name}
                         </button>
                       </li>
                     ))}
@@ -353,7 +329,7 @@ async function onDelete(p) {
             <div className="card-header bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
               <h3 className="h5 mb-0">Danh sách sản phẩm</h3>
               <span className="small text-muted">
-                Tổng: {filtered.length} sản phẩm
+                Tổng: {totalElements} sản phẩm
               </span>
             </div>
 
@@ -376,7 +352,7 @@ async function onDelete(p) {
                   <tr className="border-bottom small text-secondary text-uppercase">
                     <th className="ps-4 py-3 text-start">Sản phẩm</th>
                     <th className="py-3 text-start">Danh mục</th>
-                    <th className="py-3 text-center">Kho</th>
+                    <th className="py-3 text-center">SL còn lại</th>
                     <th className="py-3 text-center">SKU</th>
                     <th className="py-3 text-center">Đã bán</th>
                     <th className="py-3 text-start">Trạng thái</th>
@@ -385,7 +361,7 @@ async function onDelete(p) {
                 </thead>
 
                 <tbody>
-                  {filtered.map((p) => (
+                  {data.map((p) => (
                     <tr key={p.id} className="border-bottom align-middle">
                       {/* Sản phẩm */}
                       <td className="ps-4 py-3">
@@ -417,28 +393,27 @@ async function onDelete(p) {
                             </div>
                             <div
                               className="small text-muted text-truncate"
-                              title={`${p.code} • ${p.brand?.name ?? ""}`}
+                              title={`${p.code} • ${p.brandName}`}
                             >
-                              {p.code} • {p.brand?.name}
+                              {p.code} • {p.brandName}
                             </div>
 
                             {/* Giá min / saleMin */}
-                            {(p.priceMin != null ||
-                              p.salePriceMin != null) && (
+                            {(p.priceMin != null || p.salePriceMin != null) && (
                               <div className="small mt-1">
                                 {p.salePriceMin != null ? (
                                   <>
                                     <span className="fw-semibold text-danger">
-                                      {Number(
-                                        p.salePriceMin
-                                      ).toLocaleString("vi-VN")}
+                                      {Number(p.salePriceMin).toLocaleString(
+                                        "vi-VN"
+                                      )}
                                       ₫
                                     </span>
                                     {p.priceMin != null && (
                                       <span className="text-muted text-decoration-line-through ms-1">
-                                        {Number(
-                                          p.priceMin
-                                        ).toLocaleString("vi-VN")}
+                                        {Number(p.priceMin).toLocaleString(
+                                          "vi-VN"
+                                        )}
                                         ₫
                                       </span>
                                     )}
@@ -446,9 +421,9 @@ async function onDelete(p) {
                                 ) : (
                                   p.priceMin != null && (
                                     <span className="fw-semibold">
-                                      {Number(
-                                        p.priceMin
-                                      ).toLocaleString("vi-VN")}
+                                      {Number(p.priceMin).toLocaleString(
+                                        "vi-VN"
+                                      )}
                                       ₫
                                     </span>
                                   )
@@ -460,12 +435,28 @@ async function onDelete(p) {
                       </td>
 
                       {/* Danh mục */}
-                      <td className="py-3 small text-secondary">
+                      <td className="py-3">
                         <div
-                          className="text-truncate"
-                          title={(p.categories || []).join(", ")}
+                          className="d-flex flex-wrap gap-1"
+                          title={(p.categories || [])
+                            .map((c) => c.name)
+                            .join(", ")}
                         >
-                          {(p.categories || []).join(", ")}
+                          {(p.categories || []).slice(0, 2).map((c) => (
+                            <span
+                              key={c.id}
+                              className="badge bg-light text-dark border"
+                              style={{ fontWeight: 400 }}
+                            >
+                              {c.name}
+                            </span>
+                          ))}
+
+                          {(p.categories || []).length > 2 && (
+                            <span className="badge bg-secondary bg-opacity-10 text-secondary">
+                              +{p.categories.length - 2}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -486,26 +477,26 @@ async function onDelete(p) {
 
                       {/* Trạng thái + rating */}
                       <td className="py-3">
-                        <span
-                          className={`badge ${
-                            p.published ? "bg-success" : "bg-secondary"
-                          } bg-opacity-10 px-2 py-1`}
-                        >
+                        <div>
                           <span
-                            className={
-                              p.published ? "text-success" : "text-secondary"
-                            }
+                            className={`badge ${
+                              p.published ? "bg-success" : "bg-secondary"
+                            } bg-opacity-10 px-2 py-1`}
                           >
-                            {p.published ? "Published" : "Hidden"}
+                            <span
+                              className={
+                                p.published ? "text-success" : "text-secondary"
+                              }
+                            >
+                              {p.published ? "Published" : "Hidden"}
+                            </span>
                           </span>
-                        </span>
-                        <span className="ms-2 small text-muted">
-                          ★{" "}
-                          {p.averageRating != null
-                            ? Number(p.averageRating).toFixed(1)
-                            : "0"}{" "}
-                          / {p.totalReviews ?? 0}
-                        </span>
+                        </div>
+
+                        <div className="small text-muted mt-1">
+                          ★ {Number(p.averageRating || 0).toFixed(1)} /{" "}
+                          {p.totalReviews ?? 0}
+                        </div>
                       </td>
 
                       {/* Thao tác */}
@@ -536,7 +527,7 @@ async function onDelete(p) {
                       </td>
                     </tr>
                   ))}
-                  {!filtered.length && !loading && (
+                  {!totalElements && !loading && (
                     <tr>
                       <td className="ps-4 py-4 text-muted" colSpan={7}>
                         Không có sản phẩm phù hợp.
@@ -546,6 +537,88 @@ async function onDelete(p) {
                 </tbody>
               </table>
             </div>
+            <div className="mt-4 d-flex justify-content-end">
+              <nav aria-label="Page navigation">
+                <ul
+                  className="pagination"
+                  style={{ marginTop: 0, marginRight: 35 }}
+                >
+                  <li className={`page-item ${page === 0 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 0}
+                    >
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+                  </li>
+
+                  {Array.from({ length: totalPages }).map((_, idx) => (
+                    <li
+                      key={idx}
+                      className={`page-item ${page === idx ? "active" : ""}`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() => setPage(idx)}
+                      >
+                        {idx + 1}
+                      </button>
+                    </li>
+                  ))}
+
+                  <li
+                    className={`page-item ${
+                      page >= totalPages - 1 ? "disabled" : ""
+                    }`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setPage(page + 1)}
+                      disabled={page >= totalPages - 1}
+                    >
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <style>{`
+                        .pagination {
+                            margin-top: 3rem; /* tương đương mt-12 */
+                          }
+                          
+                          .pagination .page-item {
+                            margin: 0 0.25rem;
+                          }
+                          
+                          .pagination .page-link {
+                            padding: 0.5rem 0.75rem;         /* tương đương px-3 py-2 */
+                            border-radius: 0.5rem;           /* rounded-lg */
+                            border: 1px solid #d1d5db;       /* border-gray-300 */
+                            color: #6b7280;                  /* text-gray-500 */
+                            white-space: nowrap;             /* nowrap */
+                            transition: background-color .2s;
+                          }
+                          
+                          .pagination .page-link:hover {
+                            background-color: #f9fafb;       /* hover:bg-gray-50 */
+                          }
+                          
+                          .pagination .page-item.active .page-link {
+                            background-color: #ede734;       /* bg-[#ede734] */
+                            color: #000;                     /* text-black */
+                            font-weight: 500;                /* font-medium */
+                            border-color: #ede734;
+                          }
+                          
+                          .pagination .page-item.disabled .page-link {
+                            color: #9ca3af;                  /* text-gray-400 */
+                            pointer-events: none;
+                            background: transparent;
+                            border-color: #d1d5db;
+                          }
+                        `}</style>
           </div>
 
           <style>{`

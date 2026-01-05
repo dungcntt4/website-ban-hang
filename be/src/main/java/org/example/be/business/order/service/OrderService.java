@@ -12,15 +12,25 @@ import org.example.be.business.order.repository.OrderItemCostRepository;
 import org.example.be.business.order.repository.OrderItemRepository;
 import org.example.be.business.order.repository.OrderRepository;
 import org.example.be.business.product.model.entity.InventoryItem;
+import org.example.be.business.product.model.entity.Product;
 import org.example.be.business.product.model.entity.ProductVariant;
 import org.example.be.business.product.model.entity.PurchaseReceiptItem;
 import org.example.be.business.product.repository.InventoryItemRepository;
 import org.example.be.business.product.repository.ProductVariantRepository;
 import org.example.be.business.product.repository.PurchaseReceiptItemRepository;
 import org.example.be.business.product.service.ProductReviewService;
+import org.example.be.common.util.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -97,6 +107,7 @@ public class OrderService {
         for (OrderItem item : o.getOrderItems()) {
 
             ProductVariant variant = item.getProductVariant();
+            Product product = variant.getProduct();
 
             InventoryItem inv = inventoryItemRepository
                     .findByVariant(variant)
@@ -130,6 +141,7 @@ public class OrderService {
 
             inv.setStockOnHand(inv.getStockOnHand() - item.getQuantity());
             inv.setStockReserved(inv.getStockReserved() - item.getQuantity());
+            product.setTotalSold(product.getTotalSold() + item.getQuantity());
         }
 
         o.setStatus(OrderStatus.DA_THANH_TOAN);
@@ -192,4 +204,89 @@ public class OrderService {
                 productReviewService
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<OrderDetailResponse> getAllOrders() {
+        return orderRepository.findAllWithUser()
+                .stream()
+                .map(OrderDetailResponse::from)
+                .toList();
+    }
+
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderDetailResponse> getOrders(
+            int page,
+            int size,
+            String search,
+            OrderStatus status,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Instant from = fromDate != null
+                ? fromDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                : null;
+
+        Instant to = toDate != null
+                ? toDate.atTime(23, 59, 59)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                : null;
+
+        Page<Order> orderPage = orderRepository.searchOrders(
+                isBlank(search) ? null : search,
+                status,
+                from,
+                to,
+                pageable
+        );
+
+        List<Order> orders = orderPage.getContent();
+
+        if (!orders.isEmpty()) {
+            orderRepository.fetchDetailsByIds(
+                    orders.stream().map(Order::getId).toList()
+            );
+        }
+
+        List<OrderDetailResponse> content = orders
+                .stream()
+                .map(OrderDetailResponse::from)
+                .toList();
+
+        return new PageResponse<>(
+                content,
+                orderPage.getNumber(),
+                orderPage.getSize(),
+                orderPage.getTotalElements(),
+                orderPage.getTotalPages()
+        );
+    }
+
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+
+    @Transactional
+    public void updateStatus(String orderCode, String newStatus) {
+        Order o = orderRepository.findByOrderCode(orderCode);
+        OrderStatus status = OrderStatus.valueOf(newStatus);
+
+        switch (status) {
+            case DA_THANH_TOAN -> markPaid(orderCode);
+            case THANH_TOAN_THAT_BAI -> markPaymentFailed(orderCode);
+            case HUY_THANH_TOAN -> markPaymentCancelled(orderCode);
+            default -> o.setStatus(status);
+        }
+    }
+
+
 }

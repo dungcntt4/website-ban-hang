@@ -21,19 +21,13 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
       key: "orders",
       icon: "shopping-cart",
       label: "Quản lý Đơn hàng",
-      to: "/ordermanagement",
+      to: "/order-management",
     },
     {
       key: "customermanagement",
       icon: "users",
       label: "Quản lý Khách hàng",
       to: "/customermanagement",
-    },
-    {
-      key: "collectionmanagement",
-      icon: "tags",
-      label: "Quản lí bộ sưu tập",
-      to: "/collectionmanagement",
     },
     {
       key: "reports&statistics",
@@ -50,7 +44,7 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
 
   const styles = {
     sidebar: {
-      width: collapsed ? "80px" : "250px",
+      minWidth: collapsed ? "80px" : "250px",
       minHeight: "100vh",
       background: "#000",
       transition: "width 0.3s ease",

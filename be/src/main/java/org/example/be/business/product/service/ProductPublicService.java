@@ -262,5 +262,66 @@ public class ProductPublicService {
 
         return dto;
     }
+    @Transactional(readOnly = true)
+    public PagedProductListPublicResponse search(
+            String keyword,
+            int pageNum,
+            int pageSize
+    ) {
+        if (pageNum < 1) pageNum = 1;
+        if (pageSize <= 0) pageSize = 12;
+
+        Pageable pageable = PageRequest.of(
+                pageNum - 1,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
+
+        Page<Product> page = productRepo.searchPublic(
+                keyword.trim().toLowerCase(),
+                pageable
+        );
+
+        // ===== map Product -> ProductListItemDTO =====
+        List<ProductListItemDTO> products = page.getContent()
+                .stream()
+                .map(p -> {
+                    ProductListItemDTO dto = new ProductListItemDTO();
+                    dto.setId(p.getId());
+                    dto.setName(p.getName());
+                    dto.setSlug(p.getSlug());
+                    dto.setThumbnailUrl(p.getThumbnailUrl());
+                    dto.setPriceMin(p.getPriceMin());
+                    dto.setSalePriceMin(p.getSalePriceMin());
+                    dto.setAverageRating(p.getAverageRating());
+                    dto.setTotalReviews(p.getTotalReviews());
+
+                    // brand (nhẹ, FE search cần)
+                    BrandListItemResponse brand = new BrandListItemResponse();
+                    brand.setId(p.getBrand().getId());
+                    brand.setName(p.getBrand().getName());
+                    brand.setSlug(p.getBrand().getSlug());
+                    brand.setImage(p.getBrand().getImage());
+                    dto.setBrand(brand);
+
+                    return dto;
+                })
+                .toList();
+
+        // ===== build response =====
+        PagedProductListPublicResponse resp = new PagedProductListPublicResponse();
+        resp.setProducts(products);
+
+        // search KHÔNG cần filter
+        resp.setBrands(List.of());
+        resp.setSpecifications(List.of());
+
+        resp.setPageNum(pageNum);
+        resp.setPageSize(pageSize);
+        resp.setTotalElements(page.getTotalElements());
+        resp.setTotalPages(page.getTotalPages());
+
+        return resp;
+    }
 
 }

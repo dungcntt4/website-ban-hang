@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 
-function GoogleLoginButton() {
+function GoogleLoginButton({ onSuccess }) {
   const btnRef = useRef(null)
   const { loginWithGoogle } = useAuth()
   const navigate = useNavigate()
@@ -16,10 +16,15 @@ function GoogleLoginButton() {
       client_id: clientId,
       callback: async (response) => {
         try {
-          const user = await loginWithGoogle(response.credential) // ⬅️ nhận user
-          // ⬇️ điều hướng theo role
-          if (user?.role === 'ROLE_ADMIN') navigate('/dashboard', { replace: true })
-          else navigate('/', { replace: true })
+          const user = await loginWithGoogle(response.credential)
+
+          if (user?.role === 'ROLE_ADMIN') {
+            navigate('/dashboard', { replace: true })
+          } else {
+            navigate('/', { replace: true })
+          }
+
+          onSuccess?.()   
         } catch (e) {
           toast.error(e.message || 'Google Sign-In thất bại')
         }
@@ -33,8 +38,14 @@ function GoogleLoginButton() {
         width: 320,
       })
     }
-  }, [loginWithGoogle, navigate])
+  }, [loginWithGoogle, navigate, onSuccess])
 
-  return <div ref={btnRef} style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }} />
+  return (
+    <div
+      ref={btnRef}
+      style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}
+    />
+  )
 }
+
 export default GoogleLoginButton

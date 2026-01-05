@@ -1,92 +1,131 @@
 // src/components/SearchOverlay.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 function SearchOverlay({ onClose }) {
   const [searchText, setSearchText] = useState("");
-  const [allProducts, setAllProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [pageNum, setPageNum] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const horizontalRef = useRef(null);
   const navigate = useNavigate();
-
-  // Gọi lấy toàn bộ sản phẩm (dùng DTO mới: thumbnailUrl, priceMin, salePriceMin, averageRating, totalReviews,...)
+  const PAGE_SIZE = 5;
+  const [page, setPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pages, setPages] = useState({});
+  const GAP = 12;
+  const CARD_WIDTH = 220 + 20; // 240
+const PAGE_WIDTH = CARD_WIDTH * 5 + GAP * 4;
+  // ===== debounce search =====
   useEffect(() => {
-    setLoading(true);
-    fetch("http://localhost:8080/api/products")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Lỗi khi lấy dữ liệu");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setAllProducts(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        console.error("Lỗi:", err);
-        setError("Không thể tải danh sách sản phẩm");
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Lọc sản phẩm theo từ khóa (theo tên, mã, brand)
-  useEffect(() => {
-    if (searchText.trim() === "") {
-      setFilteredProducts([]);
+    if (!searchText.trim()) {
+      setPages({});
+      setCurrentPage(1);
+      setTotalPages(0);
       return;
     }
 
-    const keyword = searchText.toLowerCase();
+    const timer = setTimeout(() => {
+      fetchSearch(1);
+    }, 300);
 
-    const filtered = allProducts.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const code = (p.code || "").toLowerCase();
-      const brandName = (p.brandName || "").toLowerCase();
-      return (
-        name.includes(keyword) ||
-        code.includes(keyword) ||
-        brandName.includes(keyword)
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // ===== gọi BE search =====
+  async function fetchSearch(page) {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const resp = await fetch(
+        `http://localhost:8080/api/public/products/search` +
+          `?keyword=${encodeURIComponent(searchText)}` +
+          `&pageNum=${page}` +
+          `&pageSize=5`
       );
-    });
 
-    setFilteredProducts(filtered);
-  }, [searchText, allProducts]);
+      if (!resp.ok) throw new Error("Search failed");
 
-  // Hàm render sao đánh giá (dùng averageRating)
-  const renderStars = (rating) => {
-    const safeRating = Number.isFinite(rating) ? rating : 0;
-    const fullStars = Math.floor(safeRating);
-    const halfStar = safeRating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+      const json = await resp.json();
 
-    return (
-      <>
-        {[...Array(fullStars)].map((_, i) => (
-          <i key={`full-${i}`} className="fas fa-star"></i>
-        ))}
-        {halfStar && <i className="fas fa-star-half-alt"></i>}
-        {[...Array(emptyStars)].map((_, i) => (
-          <i key={`empty-${i}`} className="far fa-star"></i>
-        ))}
-      </>
-    );
-  };
+      setPages((prev) => ({
+        ...prev,
+        [page]: json.products || [],
+      }));
+      setPageNum(json.pageNum);
+      setTotalPages(json.totalPages);
+    } catch (e) {
+      setError("Không thể tìm kiếm sản phẩm");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    const el = horizontalRef.current;
+    if (!el) return;
+
+    let ticking = false;
+
+    const onWheel = (e) => {
+      if (totalPages <= 1) return;
+
+      e.preventDefault();
+      if (ticking) return;
+      ticking = true;
+
+      if (e.deltaY > 0 && currentPage < totalPages) {
+        const next = currentPage + 1;
+        setCurrentPage(next);
+        fetchSearch(next);
+      }
+
+      if (e.deltaY < 0 && currentPage > 1) {
+        const prev = currentPage - 1;
+        setCurrentPage(prev);
+        fetchSearch(prev);
+      }
+
+      setTimeout(() => (ticking = false), 400); // debounce
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [currentPage, totalPages, products]);
 
   const handleClickProduct = (product) => {
-    // ưu tiên đi theo slug nếu có, không thì dùng id
     const slugOrId = product.slug || product.id;
     navigate(`/products/${slugOrId}`);
     onClose?.();
   };
 
+  // ===== render stars giữ nguyên =====
+  const renderStars = (rating) => {
+    const safe = Number.isFinite(rating) ? rating : 0;
+    const full = Math.floor(safe);
+    const half = safe % 1 >= 0.5;
+    const empty = 5 - full - (half ? 1 : 0);
+    return (
+      <>
+        {[...Array(full)].map((_, i) => (
+          <i key={`f-${i}`} className="fas fa-star"></i>
+        ))}
+        {half && <i className="fas fa-star-half-alt"></i>}
+        {[...Array(empty)].map((_, i) => (
+          <i key={`e-${i}`} className="far fa-star"></i>
+        ))}
+      </>
+    );
+  };
   return (
     <div
       className="position-fixed top-0 start-0 w-100 bg-white bg-opacity-90 shadow-lg d-flex flex-column"
       style={{
         zIndex: 2000,
-        height: "60vh",
+        height: "73vh",
         backdropFilter: "blur(4px)",
       }}
     >
@@ -138,7 +177,11 @@ function SearchOverlay({ onClose }) {
               <img
                 src="/images/LogoNgang.png"
                 alt="Home"
-                style={{ width: "max-content", height: "60px", paddingTop: "4px" }}
+                style={{
+                  width: "max-content",
+                  height: "60px",
+                  paddingTop: "4px",
+                }}
                 className="card-img-top"
               />
             </a>
@@ -210,117 +253,148 @@ function SearchOverlay({ onClose }) {
       </div>
 
       {/* Vùng danh sách có scroll riêng */}
-      <div
-        className="flex-grow-1 overflow-auto"
-        style={{ padding: "0 1rem" }}
-      >
+      <div className="flex-grow-1" style={{ padding: "0 1rem" }}>
         {loading && (
           <div className="text-center text-muted mt-3">
             Đang tải sản phẩm...
           </div>
         )}
-        {error && (
-          <div className="text-center text-danger mt-3">{error}</div>
-        )}
+        {error && <div className="text-center text-danger mt-3">{error}</div>}
 
-        {!loading && !error && searchText.trim() !== "" && filteredProducts.length === 0 && (
-          <div className="text-center text-muted mt-3">
-            Không tìm thấy sản phẩm phù hợp.
-          </div>
-        )}
+        {!loading &&
+          !error &&
+          searchText.trim() !== "" &&
+          Object.keys(pages).length === 0 && (
+            <div className="text-center text-muted mt-3">
+              Không tìm thấy sản phẩm phù hợp.
+            </div>
+          )}
 
         <div
-          className="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-3"
+          ref={horizontalRef}
           style={{
-            marginLeft: "9rem",
-            marginRight: "9rem",
-            marginTop: "1rem",
-            marginBottom: "1rem",
+            width: "1280px",
+            margin: "0 auto",
+            overflow: "hidden", // chỉ cắt TRANSFORM page
           }}
         >
-          {filteredProducts.map((product) => {
-            const hasSale =
-              product.salePriceMin != null &&
-              product.priceMin != null &&
-              product.salePriceMin < product.priceMin;
+          <div
+            style={{
+              display: "flex",
+              gap: `${GAP}px`,
+              padding: "16px 12px", // ✅ SAFE ZONE CHO HOVER
+              transform: `translateX(-${(currentPage - 1) * PAGE_WIDTH}px)`,
+              transition: "transform 0.45s ease",
+            }}
+          >
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const page = index + 1;
+              const pageProducts = pages[page] || [];
 
-            const priceOriginal = product.priceMin || 0;
-            const priceSale = hasSale ? product.salePriceMin : null;
-
-            const avgRating = product.averageRating || 0;
-            const reviewCount = product.totalReviews || 0;
-
-            return (
-              <div key={product.id} className="col">
+              return (
                 <div
-                  className="search-product-card h-100 d-flex flex-column justify-content-between"
-                  style={{ height: "320px", cursor: "pointer" }}
-                  onClick={() => handleClickProduct(product)}
+                  key={page}
+                  style={{
+                    display: "flex",
+                    gap: `${GAP}px`,
+                    width: `${PAGE_WIDTH}px`,
+                    flexShrink: 0,
+                  }}
                 >
-                  {/* Vùng ảnh */}
-                  <div
-                    className="position-relative overflow-hidden"
-                    style={{ height: "55%" }}
-                  >
-                    <img
-                      src={
-                        product.thumbnailUrl ||
-                        "https://via.placeholder.com/400x400?text=No+Image"
-                      }
-                      alt={product.name}
-                      className="search-product-image w-100 h-100"
-                    />
-                    {hasSale && (
-                      <div className="search-sale-badge">
-                        -
-                        {Math.round(
-                          ((priceOriginal - priceSale) / priceOriginal) * 100
-                        )}
-                        %
+                  {pageProducts.map((product) => {
+                    const hasSale =
+                      product.salePriceMin != null &&
+                      product.priceMin != null &&
+                      product.salePriceMin < product.priceMin;
+
+                    const priceOriginal = product.priceMin || 0;
+                    const priceSale = hasSale ? product.salePriceMin : null;
+
+                    const avgRating = product.averageRating || 0;
+                    const reviewCount = product.totalReviews || 0;
+
+                    return (
+                      <div
+                        key={product.id}
+                        style={{
+                          width: "220px",
+                          flexShrink: 0,
+                          margin: "10px",
+                        }}
+                      >
+                        <div
+                          className="search-product-card"
+                          style={{ height: "350px", cursor: "pointer" }}
+                          onClick={() => handleClickProduct(product)}
+                        >
+                          {/* IMAGE */}
+                          <div style={{ height: "60%", overflow: "hidden" }}>
+                            <img
+                              src={product.thumbnailUrl}
+                              alt={product.name}
+                              className="search-product-image"
+                            />
+                            {hasSale && ( <div className="search-sale-badge"> - {Math.round( ((priceOriginal - priceSale) / priceOriginal) * 100 )} % </div> )}
+                          </div>
+
+                          {/* INFO */}
+                          <div className="p-3">
+                            <h3 className="fs-6 text-truncate">
+                              {product.name}
+                            </h3>
+
+                            <div className="mb-2">
+                              {hasSale ? (
+                                <>
+                                  <span className="text-danger fw-bold">
+                                    {Math.round(priceSale).toLocaleString(
+                                      "vi-VN"
+                                    )}
+                                    ₫
+                                  </span>
+                                  <span className="text-decoration-line-through ms-2">
+                                    {Math.round(priceOriginal).toLocaleString(
+                                      "vi-VN"
+                                    )}
+                                    ₫
+                                  </span>
+                                </>
+                              ) : (
+                                <span>
+                                  {Math.round(priceOriginal).toLocaleString(
+                                    "vi-VN"
+                                  )}
+                                  ₫
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ color: "#ede734" }}>
+                              {renderStars(avgRating)}
+                              <span className="text-secondary ms-2">
+                                ({reviewCount})
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Nội dung bên dưới */}
-                  <div className="p-3 d-flex flex-column justify-content-between" style={{ height: "45%" }}>
-                    <h3 className="fs-6 mb-2 text-truncate">
-                      {product.name}
-                    </h3>
-
-                    {/* Giá */}
-                    <div className="d-flex align-items-center mb-2">
-                      {hasSale ? (
-                        <>
-                          <span className="text-danger fw-bold">
-                            {Math.round(priceSale).toLocaleString("vi-VN")}₫
-                          </span>
-                          <span className="text-secondary text-decoration-line-through ms-2">
-                            {Math.round(priceOriginal).toLocaleString("vi-VN")}₫
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-secondary fw-semibold">
-                          {Math.round(priceOriginal).toLocaleString("vi-VN")}₫
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Rating */}
-                    <div className="d-flex align-items-center">
-                      <div style={{ color: "#ede734" }}>
-                        {renderStars(avgRating)}
-                      </div>
-                      <span className="text-secondary small ms-2">
-                        ({reviewCount})
-                      </span>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
+      <style>{`
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+`}</style>
     </div>
   );
 }

@@ -375,7 +375,7 @@ function AuthModal({ open, onClose, initialTab = "login" }) {
                   </button>
                 </div>
 
-                <GoogleLoginButton />
+                <GoogleLoginButton onSuccess={onClose}/>
 
                 <p style={{ marginTop: 20, textAlign: "center" }}>
                   Bạn chưa có tài khoản?{" "}

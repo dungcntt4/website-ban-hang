@@ -76,10 +76,7 @@ function ProductCreate() {
     () =>
       categories
         .filter((c) => c.parent_id != null) // chỉ những thằng có cha
-        .sort(
-          (a, b) =>
-            (a.display_order ?? 0) - (b.display_order ?? 0)
-        ),
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
     [categories]
   );
 
@@ -393,8 +390,14 @@ function ProductCreate() {
     const combos = cartesian(valueArrays);
 
     const nextVariants = combos.map((combo, idx) => {
-      const name = combo.map((x) => x.valueLabel).join("/");
-      const sku = `${basic.code || "SKU"}-${idx + 1}`.toUpperCase();
+      // SKU HIỂN THỊ (ngắn)
+      const sku = combo.map((x) => x.valueLabel).join("/");
+
+      // NAME LƯU DB (đầy đủ, unique)
+      const name = `${basic.code}-${combo
+        .map((x) => toSlug(x.valueLabel))
+        .join("-")}`.toUpperCase();
+
       return {
         id: idx + 1,
         product_id: null,
@@ -429,7 +432,7 @@ function ProductCreate() {
 
   // ====== TÍNH KHOẢNG GIÁ & BIẾN THỂ RẺ NHẤT ======
   const priceSummary = useMemo(() => {
-    const included = variants.filter((v) => v.included);
+    const included = variants.filter((v) => v && v.included);
     if (!included.length) return null;
 
     const withEffective = included
@@ -629,10 +632,7 @@ function ProductCreate() {
               o.option_name || o.optionName || o.group_name || "";
             const valueId = o.option_value_id || o.optionValueId;
             const valueLabel =
-              o.option_value_label ||
-              o.optionValueLabel ||
-              o.value_label ||
-              "";
+              o.option_value_label || o.optionValueLabel || o.value_label || "";
             if (!valueId) return;
 
             if (!optionGroupMap.has(optionId)) {
@@ -1242,9 +1242,7 @@ function ProductCreate() {
                     nhất: <strong>{priceSummary.cheapestName}</strong> (
                     {priceSummary.cheapestSalePrice != null ? (
                       <>
-                        {priceSummary.cheapestSalePrice.toLocaleString(
-                          "vi-VN"
-                        )}
+                        {priceSummary.cheapestSalePrice.toLocaleString("vi-VN")}
                         ₫{" "}
                         <span className="text-muted text-decoration-line-through">
                           {priceSummary.cheapestBasePrice?.toLocaleString(
@@ -1279,7 +1277,7 @@ function ProductCreate() {
                   </colgroup>
                   <thead>
                     <tr className="border-bottom small text-secondary text-uppercase">
-                      <th className="ps-3">Chọn</th>
+                      <th className="ps-3"></th>
                       <th>Cấu hình</th>
                       <th>SKU *</th>
                       <th>Giảm giá</th>

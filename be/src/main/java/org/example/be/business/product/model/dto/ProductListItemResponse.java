@@ -35,7 +35,7 @@ public class ProductListItemResponse {
     private String brandName;         // join brand
 
     // tên các category của product
-    private List<String> categories;
+    private List<CategoryListItemResponse> categories;
 
     // Tổng tồn kho hiện tại (sau này tính từ bảng lô nhập, không phải inventory_item)
     private long stockOnHand;
