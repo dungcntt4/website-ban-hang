@@ -5,8 +5,14 @@ import org.example.be.business.product.model.dto.HomeProductResponse;
 import org.example.be.business.product.model.dto.PagedProductListPublicResponse;
 import org.example.be.business.product.model.dto.ProductDetailPublicRespDTO;
 import org.example.be.business.product.service.ProductPublicService;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

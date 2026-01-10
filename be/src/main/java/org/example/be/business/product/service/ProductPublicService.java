@@ -373,6 +373,8 @@ public class ProductPublicService {
             product.put("id", p.getId());
             product.put("name", p.getName());
             product.put("brand", p.getBrand().getName());
+            product.put("slug", p.getSlug());
+            product.put("thumbnailUrl", p.getThumbnailUrl());
             product.put("priceMin", p.getPriceMin());
             product.put("salePriceMin", p.getSalePriceMin());
 

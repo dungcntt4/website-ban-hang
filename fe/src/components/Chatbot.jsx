@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-
+import { GoogleGenAI } from "@google/genai";
 function Chatbot() {
   const [showChat, setShowChat] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -8,9 +8,10 @@ function Chatbot() {
   const [subCategories, setSubCategories] = useState([]);
   const chatRef = useRef(null);
   const buttonRef = useRef(null);
-  const GEMINI_API =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=AIzaSyA7rGwSH3HisHQv2fNi5afUWz5-ex621Q0";
 
+  const ai = new GoogleGenAI({
+    apiKey: "AIzaSyA7rGwSH3HisHQv2fNi5afUWz5-ex621Q0",
+  });
   useEffect(() => {
     const fetchChatbotProducts = async () => {
       try {
@@ -58,7 +59,7 @@ function Chatbot() {
     }
   }, [showChat]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input) return;
 
     setMessages((prev) => [...prev, { sender: "user", text: input }]);
@@ -67,6 +68,7 @@ function Chatbot() {
       id: p.id,
       name: p.name,
       brand: p.brand,
+      slug: p.slug,
       priceMin: p.priceMin,
       salePriceMin: p.salePriceMin,
       categories: p.categories,
@@ -75,60 +77,105 @@ function Chatbot() {
     }));
 
     const finalPrompt = `
-Bạn là trợ lý tư vấn bán máy tính và linh kiện.
+Bạn là trợ lý bán hàng của Dũng Computer – hệ thống bán máy tính và linh kiện chính hãng tại Việt Nam.
 
-DỮ LIỆU SẢN PHẨM bên dưới là DANH SÁCH DUY NHẤT bạn được phép sử dụng.
-KHÔNG được bịa, KHÔNG suy đoán.
+THÔNG TIN CỬA HÀNG:
+- Địa chỉ: Thôn Yên Quán, xã Hưng Đạo, huyện Quốc Oai, TP. Hà Nội
+- Website: www.dtech.vn
+- Hotline: 0123 456 789
+- Giờ mở cửa: 8h – 21h hàng ngày
 
-CÁCH TƯ VẤN:
-- Phân tích nhu cầu: học tập, văn phòng, gaming, đồ họa, lập trình
-- Giải thích CPU, RAM, SSD, GPU dễ hiểu
-- Nếu có ngân sách, chỉ tư vấn trong ngân sách
-- Nếu thiếu thông tin, hỏi lại khách
+VAI TRÒ CỦA BẠN:
+- Bạn là nhân viên tư vấn bán hàng, không phải AI tổng quát
+- Nhiệm vụ chính: giúp khách chọn đúng sản phẩm phù hợp nhu cầu và ngân sách
 
-FORMAT TRẢ LỜI (JSON):
-{
-  "answer": "nội dung tư vấn",
-  "recommendedProductIds": ["id1", "id2"]
-}
-
-DANH SÁCH SẢN PHẨM (KHÔNG IN RA):
+DANH SÁCH SẢN PHẨM (CHỈ ĐƯỢC DÙNG DANH SÁCH NÀY, KHÔNG IN RA NGUYÊN DỮ LIỆU):
 ${JSON.stringify(productData, null, 2)}
 
-CÂU HỎI KHÁCH:
+QUY TẮC BẮT BUỘC:
+- CHỈ được tư vấn dựa trên danh sách sản phẩm ở trên
+- TUYỆT ĐỐI KHÔNG bịa tên sản phẩm, giá tiền hoặc cấu hình
+- KHÔNG suy đoán ngoài dữ liệu đã cung cấp
+- Nếu KHÔNG có sản phẩm phù hợp → nói rõ là hiện chưa có sản phẩm đáp ứng
+- Không nhắc đến từ “AI”, “dữ liệu”, “JSON” hay “hệ thống”
+
+CÁCH TƯ VẤN:
+1. Phân tích nhu cầu của khách:
+   - Văn phòng / học tập
+   - Lập trình
+   - Gaming
+   - Đồ họa – thiết kế
+2. Giải thích cấu hình bằng ngôn ngữ dễ hiểu:
+   - CPU: quyết định tốc độ xử lý
+   - RAM: ảnh hưởng khả năng đa nhiệm
+   - SSD: tốc độ khởi động và mở ứng dụng
+   - GPU: quan trọng cho gaming và đồ họa
+3. Nếu khách có ngân sách:
+   - Chỉ tư vấn sản phẩm có giá trong ngân sách
+4. Nếu khách chưa nói rõ nhu cầu:
+   - Hỏi lại ngắn gọn 1–2 câu để làm rõ
+
+PHONG CÁCH TRẢ LỜI:
+- Lịch sự, thân thiện, giống nhân viên bán hàng thật
+- Trình bày rõ ràng, không quá dài
+- Có thể kết thúc bằng gợi ý liên hệ hotline hoặc website
+BẮT BUỘC PHẢI TRẢ VỀ DUY NHẤT 1 JSON HỢP LỆ.
+KHÔNG được viết thêm bất kỳ chữ nào ngoài JSON.
+
+FORMAT TRẢ LỜI CHÍNH XÁC:
+{
+  "answer": "Nội dung tư vấn cho khách",
+  "recommendedProductIds": ["UUID_1", "UUID_2"]
+}
+
+QUY TẮC:
+- recommendedProductIds PHẢI là id có trong danh sách sản phẩm đã cho
+- Chỉ chọn sản phẩm PHÙ HỢP nhu cầu & ngân sách
+- Nếu không có sản phẩm phù hợp → recommendedProductIds = []
+- TUYỆT ĐỐI KHÔNG bịa ID
+- KHÔNG giải thích ngoài JSON
+
+CÂU HỎI CỦA KHÁCH:
 "${input}"
 `;
 
-    fetch(GEMINI_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: finalPrompt }] }] }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        const parsed = JSON.parse(raw);
-
-        const relatedProducts = products.filter((p) =>
-          parsed.recommendedProductIds.includes(p.id)
-        );
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "bot",
-            text: parsed.answer,
-            products: relatedProducts,
-          },
-        ]);
-      })
-
-      .catch(() => {
-        setMessages((prev) => [
-          ...prev,
-          { sender: "bot", text: "Đã xảy ra lỗi khi liên hệ trợ lý." },
-        ]);
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: finalPrompt,
       });
+
+      const raw = response.text;
+
+      let parsed = {
+        answer: raw,
+        recommendedProductIds: [],
+      };
+
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0]);
+        } catch (e) {
+          console.error("Parse JSON failed", e);
+        }
+      }
+
+      const relatedProducts = products.filter((p) =>
+        parsed.recommendedProductIds?.includes(p.id)
+      );
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: parsed.answer,
+          products: relatedProducts,
+        },
+      ]);
+    } catch (err) {
+      console.error("Gemini SDK error:", err);
+    }
 
     setInput("");
   };
@@ -186,7 +233,7 @@ CÂU HỎI KHÁCH:
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontWeight: "bold" }}>Trợ lý ảo Huân Sports</div>
+            <div style={{ fontWeight: "bold" }}>Trợ lý ảo D-Tech</div>
           </div>
 
           <div
@@ -236,7 +283,17 @@ CÂU HỎI KHÁCH:
                         maxWidth: "80%",
                       }}
                     >
-                      <a href={`/products/detail/${product.id}`}>
+                      <a href={`/products/detail/${product.slug}?productId=${product.id}`}>
+                        <img
+                          src={product.thumbnailUrl}
+                          alt={product.name}
+                          style={{
+                            width: "100%",
+                            borderRadius: "6px",
+                            marginBottom: "6px",
+                            objectFit: "cover",
+                          }}
+                        />
                         <div>
                           <b>{product.name}</b>
                         </div>
