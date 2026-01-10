@@ -135,4 +135,18 @@ where o.id in :ids
         GROUP BY o.status
     """)
     List<Object[]> countByStatus(Instant start, Instant end);
+
+    long countByUserIdAndStatus(Long userId, OrderStatus status);
+
+
+    @Query("""
+    select coalesce(sum(o.totalAmount), 0)
+    from Order o
+    where o.user.id = :userId
+      and o.status = :status
+""")
+    BigDecimal sumTotalAmountByUserIdAndStatus(
+            @Param("userId") Long userId,
+            @Param("status") OrderStatus status
+    );
 }

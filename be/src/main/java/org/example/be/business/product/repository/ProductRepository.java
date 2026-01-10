@@ -98,5 +98,45 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
         ORDER BY SUM(oi.quantity) DESC
     """)
     List<TopProductDTO> findTopProducts(Instant start, Instant end);
+    // Giảm giá sâu nhất
+    @Query("""
+        SELECT p FROM Product p
+        WHERE p.published = true
+          AND p.salePriceMin IS NOT NULL
+          AND p.priceMin > p.salePriceMin
+        ORDER BY (p.priceMin - p.salePriceMin) / p.priceMin DESC
+    """)
+    List<Product> findDeepDiscount(Pageable pageable);
+
+    // Nhiều review nhất
+    @Query("""
+        SELECT p FROM Product p
+        WHERE p.published = true
+        ORDER BY p.totalReviews DESC
+    """)
+    List<Product> findMostReviewed(Pageable pageable);
+
+    // Đánh giá cao nhất
+    @Query("""
+        SELECT p FROM Product p
+        WHERE p.published = true
+        ORDER BY p.averageRating DESC, p.totalReviews DESC
+    """)
+    List<Product> findHighestRated(Pageable pageable);
+
+    // Bán chạy nhất
+    @Query("""
+        SELECT p FROM Product p
+        WHERE p.published = true
+        ORDER BY p.totalSold DESC
+    """)
+    List<Product> findBestSelling(Pageable pageable);
+
+    @Query("""
+    select p from Product p
+    where p.published = true
+      and (p.deleted is null or p.deleted = false)
+""")
+    List<Product> findAllPublished();
 
 }

@@ -23,6 +23,7 @@ import VNPayReturn from './pages/user/VNPayReturn'
 import PaymentReturn from './pages/user/PaymentReturn'
 import OrderManagement from './pages/admin/OrderManagement'
 import ReportsStatistics from './pages/admin/ReportsStatistics'
+import CustomerManagement from './pages/admin/CustomerMangement'
 export default function App() {
   return (
     <Routes>
@@ -47,7 +48,7 @@ export default function App() {
       <Route path="/product-management/inventory/:id" element={<InventoryDetail />}/>
       <Route path="/order-management" element={<OrderManagement/>}/>
       <Route path="/reports&statistics" element={<ReportsStatistics/>}/>
-      
+      <Route path="/customer-management" element={<CustomerManagement/>}/>
       {/* Chỉ cần đăng nhập */}
       <Route
         path="/me"

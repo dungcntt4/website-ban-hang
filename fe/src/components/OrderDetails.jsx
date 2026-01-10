@@ -10,6 +10,7 @@ export default function OrderDetails({ orderDT, onClose }) {
 
   const [canReviewMap, setCanReviewMap] = useState({});
   const [loading, setLoading] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
 
   const statusBadgeColor = {
     CHO_THANH_TOAN: "warning",
@@ -73,10 +74,10 @@ export default function OrderDetails({ orderDT, onClose }) {
         [selectedOrderItemId]: false,
       }));
 
-      alert("✅ Đánh giá thành công");
+      alert("Đánh giá thành công");
     } catch (err) {
       console.error(err);
-      alert("❌ Đánh giá thất bại, vui lòng thử lại");
+      alert("Đánh giá thất bại, vui lòng thử lại");
     } finally {
       setLoading(false);
     }
@@ -129,7 +130,8 @@ export default function OrderDetails({ orderDT, onClose }) {
                 </thead>
                 <tbody>
                   {orderDT.items.map((item) => {
-                    const canReview = item.canReview === true||canReviewMap[item.id];
+                    const canReview =
+                      item.canReview === true || canReviewMap[item.id];
                     const pv = item.productVariantDTO;
 
                     return (
@@ -162,7 +164,7 @@ export default function OrderDetails({ orderDT, onClose }) {
                                 setIsRating(true);
                               }}
                             >
-                              ⭐ Đánh giá
+                              ⭐
                             </button>
                           )}
                         </td>
@@ -192,32 +194,55 @@ export default function OrderDetails({ orderDT, onClose }) {
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
-                  {[1, 2, 3, 4, 5].map((val) => (
-                    <span
-                      key={val}
-                      onClick={() => setRating(val)}
-                      style={{
-                        cursor: "pointer",
-                        fontSize: 24,
-                        color: rating >= val ? "#f1c40f" : "#ccc",
-                      }}
-                    >
-                      ★
-                    </span>
-                  ))}
+                  <label className="form-label fw-semibold">
+                    Đánh giá của bạn
+                  </label>
+
+                  <div className="d-flex align-items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <i
+                        key={star}
+                        className={`${
+                          (hoverRating || rating) >= star ? "fas" : "far"
+                        } fa-star`}
+                        style={{
+                          fontSize: 28,
+                          cursor: "pointer",
+                          color: "#ede734",
+                          marginRight: 6,
+                        }}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => setRating(star)}
+                      />
+                    ))}
+                  </div>
+
+                  {(hoverRating || rating) > 0 && (
+                    <div className="text-muted small mt-1">
+                      {(() => {
+                        const v = hoverRating || rating;
+                        if (v === 1) return "Rất tệ";
+                        if (v === 2) return "Tệ";
+                        if (v === 3) return "Bình thường";
+                        if (v === 4) return "Tốt";
+                        return "Rất tốt";
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 <textarea
                   className="form-control mb-3"
-                  rows={3}
-                  placeholder="Nhận xét..."
+                  rows={4}
+                  placeholder="Chia sẻ cảm nhận của bạn về sản phẩm (chất lượng, đóng gói, giao hàng...)"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 />
 
                 <button
                   type="submit"
-                  className="btn btn-dark"
+                  className="btn btn-warning fw-semibold px-4"
                   disabled={loading}
                 >
                   {loading ? "Đang gửi..." : "Gửi đánh giá"}

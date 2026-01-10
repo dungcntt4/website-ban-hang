@@ -18,7 +18,7 @@ function SearchOverlay({ onClose }) {
   const [pages, setPages] = useState({});
   const GAP = 12;
   const CARD_WIDTH = 220 + 20; // 240
-const PAGE_WIDTH = CARD_WIDTH * 5 + GAP * 4;
+  const PAGE_WIDTH = CARD_WIDTH * 5 + GAP * 4;
   // ===== debounce search =====
   useEffect(() => {
     if (!searchText.trim()) {
@@ -97,8 +97,7 @@ const PAGE_WIDTH = CARD_WIDTH * 5 + GAP * 4;
   }, [currentPage, totalPages, products]);
 
   const handleClickProduct = (product) => {
-    const slugOrId = product.slug || product.id;
-    navigate(`/products/${slugOrId}`);
+    navigate(`/products/detail/${product.slug}?productId=${product.id}`);
     onClose?.();
   };
 
@@ -334,7 +333,18 @@ const PAGE_WIDTH = CARD_WIDTH * 5 + GAP * 4;
                               alt={product.name}
                               className="search-product-image"
                             />
-                            {hasSale && ( <div className="search-sale-badge"> - {Math.round( ((priceOriginal - priceSale) / priceOriginal) * 100 )} % </div> )}
+                            {hasSale && (
+                              <div className="search-sale-badge">
+                                {" "}
+                                -{" "}
+                                {Math.round(
+                                  ((priceOriginal - priceSale) /
+                                    priceOriginal) *
+                                    100
+                                )}{" "}
+                                %{" "}
+                              </div>
+                            )}
                           </div>
 
                           {/* INFO */}

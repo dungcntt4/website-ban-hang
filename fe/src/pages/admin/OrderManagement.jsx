@@ -233,7 +233,17 @@ const OrderManagement = () => {
   };
   const confirmUpdateStatus = async () => {
     if (!newStatus || !orderToUpdate) return;
+const order = orders.find((o) => o.orderCode === orderToUpdate);
 
+  if (!order || ["DA_THANH_TOAN", "HUY_THANH_TOAN"].includes(order.status)) {
+    setToastType("danger");
+    setToastMessage(
+      "Đơn hàng đã thanh toán hoặc đã huỷ, không thể cập nhật trạng thái"
+    );
+    setShowToast(true);
+    setShowUpdateStatusModal(false);
+    return;
+  }
     try {
       const res = await apiFetch(`/api/orders/${orderToUpdate}/status`, {
         method: "PUT",
@@ -252,11 +262,11 @@ const OrderManagement = () => {
       );
 
       setShowUpdateStatusModal(false);
-      setToastMessage(`✅ Cập nhật trạng thái ${orderToUpdate} thành công`);
+      setToastMessage(`Cập nhật trạng thái ${orderToUpdate} thành công`);
       setToastType("success");
     } catch (err) {
       console.error("Lỗi update status:", err);
-      setToastMessage("❌ Lỗi cập nhật trạng thái đơn hàng");
+      setToastMessage("Lỗi cập nhật trạng thái đơn hàng");
       setToastType("danger");
     } finally {
       setShowToast(true);

@@ -341,7 +341,7 @@ function Checkout() {
                             height: "40px",
                             objectFit: "contain",
                           }}
-                          alt="MoMo"
+                          alt="VNPAY"
                         />
                       </div>
                       <div className="ms-3">

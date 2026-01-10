@@ -29,5 +29,11 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 
     Optional<UserProfile> findByUserIdAndDefaultProfileTrue(Long userId);
 
-
+    @Query("""
+    select up
+    from UserProfile up
+    where up.user.id = :userId
+      and up.defaultProfile = true
+""")
+    Optional<UserProfile> findDefaultByUserId(Long userId);
 }

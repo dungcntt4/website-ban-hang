@@ -53,75 +53,74 @@ function ProductPage() {
   }, [categorySlug]);
 
   // =============== FETCH DATA (SERVER PAGINATION) ===============
- useEffect(() => {
-  // Nếu chưa có categorySlug (ví dụ user gõ trực tiếp /products) thì không fetch
-  if (!categorySlug) {
-    return;
-  }
-
-  const controller = new AbortController();
-  const signal = controller.signal;
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-
-      // Base URL luôn có category trong path
-      const baseUrl = `/api/public/products/${categorySlug}`;
-
-      const params = new URLSearchParams();
-
-      // paging
-      params.set("pageNum", page);
-      params.set("pageSize", pageSize);
-
-      // sort
-      if (sortOrder) {
-        params.set("sort", sortOrder);
-      }
-
-      // brand filter
-      selectedBrands.forEach((b) => params.append("brand", b));
-
-      // spec filter: hiện tại BE chưa nhận specValue, nên chưa gửi
-      // sau này nếu trả về id của specificationValue thì append ở đây:
-      // params.append("specificationValue", id);
-
-      const url = `${baseUrl}?${params.toString()}`;
-
-      const res = await fetch(url, { signal });
-
-      if (!res.ok) {
-        console.error("Load product error, status =", res.status);
-        setLoading(false);
-        return;
-      }
-
-      const data = await res.json();
-
-      setProducts(data.products || []);
-      setBrands(data.brands || []);
-      setSpecFilters(data.specifications || []);
-      setTotalPages(data.totalPages || 1);
-      setLoading(false);
-    } catch (err) {
-      if (err.name === "AbortError") {
-        // request bị cancel do unmount/change dependency => bỏ qua
-        return;
-      }
-      console.error("Load product error:", err);
-      setLoading(false);
+  useEffect(() => {
+    // Nếu chưa có categorySlug (ví dụ user gõ trực tiếp /products) thì không fetch
+    if (!categorySlug) {
+      return;
     }
-  };
 
-  fetchProducts();
+    const controller = new AbortController();
+    const signal = controller.signal;
 
-  // cleanup khi dependency thay đổi / component unmount
-  return () => {
-    controller.abort();
-  };
-}, [categorySlug, selectedBrands, sortOrder, page, pageSize]);
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
 
+        // Base URL luôn có category trong path
+        const baseUrl = `/api/public/products/${categorySlug}`;
+
+        const params = new URLSearchParams();
+
+        // paging
+        params.set("pageNum", page);
+        params.set("pageSize", pageSize);
+
+        // sort
+        if (sortOrder) {
+          params.set("sort", sortOrder);
+        }
+
+        // brand filter
+        selectedBrands.forEach((b) => params.append("brand", b));
+
+        // spec filter: hiện tại BE chưa nhận specValue, nên chưa gửi
+        // sau này nếu trả về id của specificationValue thì append ở đây:
+        // params.append("specificationValue", id);
+
+        const url = `${baseUrl}?${params.toString()}`;
+
+        const res = await fetch(url, { signal });
+
+        if (!res.ok) {
+          console.error("Load product error, status =", res.status);
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+
+        setProducts(data.products || []);
+        setBrands(data.brands || []);
+        setSpecFilters(data.specifications || []);
+        setTotalPages(data.totalPages || 1);
+        setLoading(false);
+      } catch (err) {
+        if (err.name === "AbortError") {
+          // request bị cancel do unmount/change dependency => bỏ qua
+          return;
+        }
+        console.error("Load product error:", err);
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+
+    // cleanup khi dependency thay đổi / component unmount
+    return () => {
+      controller.abort();
+    };
+  }, [categorySlug, selectedBrands, sortOrder, page, pageSize]);
 
   // =============== SYNC URL PARAMS (KHÔNG ĐẨY CATEGORY VÀO QUERY) ===============
   useEffect(() => {
@@ -212,6 +211,19 @@ function ProductPage() {
       </>
     );
   }
+  const renderStars = (rating) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      if (rating >= i) {
+        stars.push(<i key={i} className="fas fa-star"></i>);
+      } else if (rating >= i - 0.5) {
+        stars.push(<i key={i} className="fas fa-star-half-alt"></i>);
+      } else {
+        stars.push(<i key={i} className="far fa-star"></i>);
+      }
+    }
+    return stars;
+  };
 
   // =============== UI MAIN ===============
   return (
@@ -316,27 +328,35 @@ function ProductPage() {
         <div className="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
           {currentProducts.map((p) => (
             <div className="col" key={p.id}>
-               <Link
+              <Link
                 to={`/products/detail/${p.slug}?productId=${p.id}`}
                 className="text-decoration-none"
               >
                 <div className="product-card">
-                  <img
-                    src={p.thumbnailUrl}
-                    alt={p.name}
-                    className="product-image"
-                  />
+                  {/* IMAGE WRAPPER (VUÔNG 1:1) */}
+                  <div
+                    className="position-relative overflow-hidden"
+                    style={{ width: "100%", paddingTop: "100%" }}
+                  >
+                    <img
+                      src={p.thumbnailUrl}
+                      alt={p.name}
+                      className="position-absolute top-0 start-0 w-100 h-100 product-image"
+                      style={{ objectFit: "cover" }}
+                    />
 
-                  {p.salePriceMin && (
-                    <span className="sale-badge">
-                      -
-                      {Math.round(
-                        ((p.priceMin - p.salePriceMin) / p.priceMin) * 100
-                      )}
-                      %
-                    </span>
-                  )}
+                    {p.salePriceMin && (
+                      <div className="sale-badge">
+                        -
+                        {Math.round(
+                          ((p.priceMin - p.salePriceMin) / p.priceMin) * 100
+                        )}
+                        %
+                      </div>
+                    )}
+                  </div>
 
+                  {/* INFO */}
                   <div className="p-3">
                     <h5 className="text-truncate">{p.name}</h5>
 
@@ -357,15 +377,12 @@ function ProductPage() {
                       )}
                     </div>
 
-                    <div className="rating">
-                      <span>
-                        ⭐{" "}
-                        {p.averageRating != null
-                          ? p.averageRating.toFixed(1)
-                          : "0.0"}
-                      </span>{" "}
-                      <span className="review-count">
-                        ({p.totalReviews || 0} đánh giá)
+                    <div className="d-flex align-items-center">
+                      <div style={{ color: "#ede734" }}>
+                        {renderStars(p.averageRating || 0)}
+                      </div>
+                      <span className="text-secondary small ms-2">
+                        ({p.totalReviews || 0})
                       </span>
                     </div>
                   </div>

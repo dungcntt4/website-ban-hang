@@ -10,21 +10,24 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public interface OrderItemCostRepository extends JpaRepository<OrderItemCost, UUID> {
-    @Query("""
+    @Query(value = """
     SELECT COALESCE(
-        SUM(oi.totalPrice) - SUM(cost.totalCost),
+        SUM(oi.total_price) - COALESCE(SUM(cost.totalCost), 0),
         0
     )
-    FROM OrderItem oi
-    JOIN oi.order o
-    JOIN (
-        SELECT c.orderItem.id AS itemId,
-               SUM(c.costPrice * c.quantity) AS totalCost
-        FROM OrderItemCost c
-        GROUP BY c.orderItem.id
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    LEFT JOIN (
+        SELECT
+            oic.order_item_id AS itemId,
+            SUM(oic.cost_price * oic.quantity) AS totalCost
+        FROM order_item_cost oic
+        GROUP BY oic.order_item_id
     ) cost ON cost.itemId = oi.id
     WHERE o.status = 'DA_THANH_TOAN'
-      AND o.createdAt BETWEEN :start AND :end
-""")
+      AND o.created_at BETWEEN :start AND :end
+""", nativeQuery = true)
     BigDecimal calculateProfit(Instant start, Instant end);
+
+
 }

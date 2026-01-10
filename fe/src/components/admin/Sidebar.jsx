@@ -27,7 +27,7 @@ const Sidebar = ({ collapsed, onSelectMenu }) => {
       key: "customermanagement",
       icon: "users",
       label: "Quản lý Khách hàng",
-      to: "/customermanagement",
+      to: "/customer-management",
     },
     {
       key: "reports&statistics",

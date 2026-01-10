@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Header from "../../components/Header";          // chỉnh lại path nếu khác
-import HeroBanner from "../../components/HeroBanner";  // chỉnh lại path nếu khác
+import Header from "../../components/Header"; // chỉnh lại path nếu khác
+import HeroBanner from "../../components/HeroBanner"; // chỉnh lại path nếu khác
 import Footer from "../../components/Footer";
 import SearchOverlay from "../../components/SearchOverlay";
+import Chatbot from "../../components/Chatbot";
 
 function HomePage() {
   const navigate = useNavigate();
@@ -19,6 +20,10 @@ function HomePage() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [errorProducts, setErrorProducts] = useState(null);
+  const [bestSellingProducts, setBestSellingProducts] = useState([]);
+  const [deepDiscountProducts, setDeepDiscountProducts] = useState([]);
+  const [mostReviewedProducts, setMostReviewedProducts] = useState([]);
+  const [highestRatedProducts, setHighestRatedProducts] = useState([]);
 
   const scrollToTop = () =>
     window.scrollTo({
@@ -93,43 +98,37 @@ function HomePage() {
 
   // ===== FETCH SẢN PHẨM HOME (WEB BÁN MÁY TÍNH) =====
   useEffect(() => {
-    setLoadingProducts(true);
-    fetch("http://localhost:8080/api/products/home")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        let list = [];
+    const fetchHomeProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        setErrorProducts(null);
+        const res = await fetch(
+          "http://localhost:8080/api/public/products/home"
+        );
 
-        // tuỳ BE của m trả về kiểu gì, t gom lại 1 list duy nhất
-        if (Array.isArray(data)) {
-          list = data;
-        } else if (Array.isArray(data.products)) {
-          list = data.products;
-        } else {
-          const merged = [
-            ...(data.topSellingProducts || []),
-            ...(data.latestProducts || []),
-            ...(data.mostReviewedProducts || []),
-            ...(data.highestRatedProducts || []),
-          ];
-          const map = new Map();
-          merged.forEach((p) => {
-            if (p && p.id && !map.has(p.id)) {
-              map.set(p.id, p);
-            }
-          });
-          list = Array.from(map.values());
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
 
-        setProducts(list);
-      })
-      .catch((err) => {
+        const data = await res.json();
+
+        setDeepDiscountProducts(data.deepDiscountProducts || []);
+        setMostReviewedProducts(data.mostReviewedProducts || []);
+        setHighestRatedProducts(data.highestRatedProducts || []);
+        setBestSellingProducts(data.bestSellingProducts || []);
+        console.log("deepDiscountProducts:", data.deepDiscountProducts?.length);
+        console.log("mostReviewedProducts:", data.mostReviewedProducts?.length);
+        console.log("highestRatedProducts:", data.highestRatedProducts?.length);
+        console.log("bestSellingProducts:", data.bestSellingProducts?.length);
+      } catch (err) {
         console.error(err);
-        setErrorProducts("Không tải được sản phẩm");
-      })
-      .finally(() => setLoadingProducts(false));
+        setErrorProducts("Không tải được sản phẩm trang chủ");
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    fetchHomeProducts();
   }, []);
 
   // ===== UTIL RATING =====
@@ -153,63 +152,12 @@ function HomePage() {
     const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
     return sum / reviews.length;
   };
-
-  // ===== LỌC SẢN PHẨM =====
-  // 1) Giảm giá sâu nhất
-  const deepDiscountProducts = useMemo(() => {
-    if (!Array.isArray(products)) return [];
-    const withDiscount = products
-      .filter(
-        (p) =>
-          p &&
-          p.price != null &&
-          p.price > 0 &&
-          p.discountPrice != null &&
-          p.discountPrice < p.price
-      )
-      .map((p) => ({
-        ...p,
-        discountRate: (p.price - p.discountPrice) / p.price,
-      }))
-      .sort((a, b) => b.discountRate - a.discountRate);
-
-    return withDiscount.slice(0, 8);
-  }, [products]);
-
-  // 2) Được đánh giá nhiều nhất
-  const mostReviewedProducts = useMemo(() => {
-    if (!Array.isArray(products)) return [];
-    const sorted = [...products].sort((a, b) => {
-      const ra = (a.reviews || []).length;
-      const rb = (b.reviews || []).length;
-      return rb - ra;
-    });
-    return sorted.slice(0, 8);
-  }, [products]);
-
-  // 3) Được đánh giá cao nhất (nếu bằng điểm ưu tiên nhiều review hơn)
-  const highestRatedProducts = useMemo(() => {
-    if (!Array.isArray(products)) return [];
-    const sorted = [...products].sort((a, b) => {
-      const ratingA = getAverageRating(a);
-      const ratingB = getAverageRating(b);
-      if (ratingB === ratingA) {
-        const countA = (a.reviews || []).length;
-        const countB = (b.reviews || []).length;
-        return countB - countA;
-      }
-      return ratingB - ratingA;
-    });
-    return sorted.slice(0, 8);
-  }, [products]);
-
   // ===== CATEGORIES (GIỮ GIAO DIỆN CŨ – M TỰ ĐỔI THÀNH DANH MỤC MÁY TÍNH NẾU MUỐN) =====
   const categories = [
     {
       id: 1,
       name: "Laptop gaming",
-      image:
-        "https://minhhightech.com/admin/sanpham/ONEXPLAYER-G1_26_6196.jpg",
+      image: "https://minhhightech.com/admin/sanpham/ONEXPLAYER-G1_26_6196.jpg",
       href: "/products?category=laptop-gaming",
     },
     {
@@ -222,8 +170,7 @@ function HomePage() {
     {
       id: 3,
       name: "Màn hình",
-      image:
-        "https://www.sieuthimaychu.vn/datafiles/setone/15985036335554.jpg",
+      image: "https://www.sieuthimaychu.vn/datafiles/setone/15985036335554.jpg",
       href: "/products?category=monitor",
     },
     {
@@ -237,15 +184,12 @@ function HomePage() {
 
   // ===== RENDER PRODUCT CARD GIỐNG HOME CŨ =====
   const renderProductCard = (product) => {
-    const totalRating = product.reviews?.length || 0;
-    const averageRating =
-      totalRating > 0
-        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / totalRating
-        : 0;
+    const totalRating = product.totalReviews || 0;
+    const averageRating = product.averageRating || 0;
 
     return (
       <a
-        href={`/productDetails/${product.slug || product.href || ""}?productId=${product.id}`}
+        href={`/products/detail/${product.slug}?productId=${product.id}`}
         className="text-decoration-none text-black"
       >
         <div className="col">
@@ -255,16 +199,18 @@ function HomePage() {
               style={{ width: "100%", paddingTop: "100%" }}
             >
               <img
-                src={product.imageUrl1 || product.thumbnailUrl}
+                src={product.thumbnailUrl}
                 alt={product.name}
                 className="position-absolute top-0 start-0 w-100 h-100 product-image"
                 style={{ objectFit: "cover" }}
               />
-              {product.discountPrice && product.price && (
+
+              {product.salePriceMin && (
                 <div className="sale-badge">
                   -
                   {Math.round(
-                    ((product.price - product.discountPrice) / product.price) *
+                    ((product.priceMin - product.salePriceMin) /
+                      product.priceMin) *
                       100
                   )}
                   %
@@ -273,31 +219,25 @@ function HomePage() {
             </div>
 
             <div className="p-4">
-              <h3
-                className="fs-5 mb-2 text-truncate"
-                style={{ maxWidth: "200px" }}
-              >
-                {product.name}
-              </h3>
+              <h3 className="fs-5 mb-2 text-truncate">{product.name}</h3>
+
               <div className="d-flex align-items-center mb-2">
-                {product.discountPrice != null ? (
+                {product.salePriceMin ? (
                   <>
                     <span className="text-danger fw-bold">
-                      {Math.round(product.discountPrice).toLocaleString(
-                        "vi-VN"
-                      )}
-                      ₫
+                      {Number(product.salePriceMin).toLocaleString("vi-VN")}₫
                     </span>
                     <span className="text-secondary text-decoration-line-through ms-2">
-                      {Math.round(product.price).toLocaleString("vi-VN")}₫
+                      {Number(product.priceMin).toLocaleString("vi-VN")}₫
                     </span>
                   </>
                 ) : (
                   <span className="text-secondary">
-                    {Math.round(product.price || 0).toLocaleString("vi-VN")}₫
+                    {Number(product.priceMin).toLocaleString("vi-VN")}₫
                   </span>
                 )}
               </div>
+
               <div className="d-flex align-items-center">
                 <div style={{ color: "#ede734" }}>
                   {renderStars(averageRating)}
@@ -315,6 +255,7 @@ function HomePage() {
 
   return (
     <>
+      <Chatbot />
       {/* HEADER MỚI CỦA M */}
       <Header
         setShowLoginModal={setShowLoginModal}
@@ -502,9 +443,7 @@ function HomePage() {
 
         {/* ===== 3 BLOCK SẢN PHẨM: GIẢM GIÁ / NHIỀU REVIEW / CAO NHẤT ===== */}
         <div className="mx-5 mt-5">
-          {loadingProducts && (
-            <div className="mb-4">Đang tải sản phẩm...</div>
-          )}
+          {loadingProducts && <div className="mb-4">Đang tải sản phẩm...</div>}
           {errorProducts && (
             <div className="mb-4 text-danger">{errorProducts}</div>
           )}
@@ -556,9 +495,7 @@ function HomePage() {
           {/* 3. ĐƯỢC ĐÁNH GIÁ CAO NHẤT */}
           <section className="mb-5">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h3 className="fs-3 fw-bold text-dark">
-                Được đánh giá cao nhất
-              </h3>
+              <h3 className="fs-3 fw-bold text-dark">Được đánh giá cao nhất</h3>
             </div>
             <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3">
               {highestRatedProducts.map((p) => (
@@ -569,10 +506,18 @@ function HomePage() {
               {!loadingProducts &&
                 !errorProducts &&
                 highestRatedProducts.length === 0 && (
-                  <div className="col-12 text-muted">
-                    Chưa có sản phẩm nào.
-                  </div>
+                  <div className="col-12 text-muted">Chưa có sản phẩm nào.</div>
                 )}
+            </div>
+          </section>
+          <section className="mb-5">
+            <h3 className="fs-3 fw-bold text-dark">Bán chạy nhất</h3>
+            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3">
+              {bestSellingProducts.map((p) => (
+                <React.Fragment key={p.id}>
+                  {renderProductCard(p)}
+                </React.Fragment>
+              ))}
             </div>
           </section>
         </div>

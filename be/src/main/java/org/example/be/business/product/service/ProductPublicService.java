@@ -26,6 +26,41 @@ public class ProductPublicService {
     private final InventoryRepository inventoryItemRepo;
     private final ProductReviewRepository reviewRepo;
 
+    @Transactional(readOnly = true)
+    public HomeProductResponse getHomeProducts() {
+
+        HomeProductResponse resp = new HomeProductResponse();
+
+        resp.setDeepDiscountProducts(
+                productRepo.findDeepDiscount(PageRequest.of(0, 8))
+                        .stream()
+                        .map(this::buildProductListItem)
+                        .toList()
+        );
+
+        resp.setMostReviewedProducts(
+                productRepo.findMostReviewed(PageRequest.of(0, 8))
+                        .stream()
+                        .map(this::buildProductListItem)
+                        .toList()
+        );
+
+        resp.setHighestRatedProducts(
+                productRepo.findHighestRated(PageRequest.of(0, 8))
+                        .stream()
+                        .map(this::buildProductListItem)
+                        .toList()
+        );
+
+        resp.setBestSellingProducts(
+                productRepo.findBestSelling(PageRequest.of(0, 8))
+                        .stream()
+                        .map(this::buildProductListItem)
+                        .toList()
+        );
+
+        return resp;
+    }
 
     // ================== PUBLIC API: /api/public/products/{category} ==================
     @Transactional(readOnly = true)
@@ -322,6 +357,73 @@ public class ProductPublicService {
         resp.setTotalPages(page.getTotalPages());
 
         return resp;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getProductsForChatbot() {
+
+        List<Product> products = productRepo.findAllPublished();
+        // nếu chưa soft delete thì findAll()
+
+        return products.stream().map(p -> {
+
+            Map<String, Object> product = new LinkedHashMap<>();
+
+            // ===== Basic =====
+            product.put("id", p.getId());
+            product.put("name", p.getName());
+            product.put("brand", p.getBrand().getName());
+            product.put("priceMin", p.getPriceMin());
+            product.put("salePriceMin", p.getSalePriceMin());
+
+            // ===== Categories =====
+            List<String> categories =
+                    p.getProductCategories()
+                            .stream()
+                            .map(pc -> pc.getCategory().getName())
+                            .toList();
+
+            product.put("categories", categories);
+
+            // ===== Variants + Stock =====
+            List<Map<String, Object>> variants =
+                    productVariantRepo.findByProductId(p.getId())
+                            .stream()
+                            .map(v -> {
+                                Map<String, Object> variant = new LinkedHashMap<>();
+                                variant.put("sku", v.getSku());
+                                variant.put("price", v.getPrice());
+                                variant.put("discountPrice", v.getDiscountPrice());
+
+                                InventoryItem inv =
+                                        inventoryItemRepo.findByVariantId(v.getId()).orElse(null);
+                                variant.put("stock", inv != null ? inv.getStockOnHand() : 0);
+
+                                return variant;
+                            })
+                            .toList();
+
+            product.put("variants", variants);
+
+            // ===== Specifications (CORE CHATBOT) =====
+            Map<String, List<String>> specifications =
+                    psvRepo.findByProduct_Id(p.getId())
+                            .stream()
+                            .collect(Collectors.groupingBy(
+                                    psv -> psv.getSpecificationValue()
+                                            .getAttribute()
+                                            .getName(),
+                                    Collectors.mapping(
+                                            psv -> psv.getSpecificationValue().getValueText(),
+                                            Collectors.toList()
+                                    )
+                            ));
+
+            product.put("specifications", specifications);
+
+            return product;
+
+        }).toList();
     }
 
 }
