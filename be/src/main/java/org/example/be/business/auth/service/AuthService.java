@@ -82,30 +82,61 @@ public class AuthService { // nghiệp vụ auth //
 
 
     public TokenService.Pair login(LoginRequest r, String ua, String ip) {
+
         var u = users.findByEmail(r.email().trim().toLowerCase())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng"));
 
-        if (u.isLocked())
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED, "Tài khoản đã bị khóa, vui lòng liên hệ quản trị viên");
+        Instant now = Instant.now();
 
-        if (!encoder.matches(r.password(), u.getPasswordHash()))
+        // 1. Nếu đang bị khóa và CHƯA HẾT HẠN → chặn
+        if (u.isLocked()) {
+            if (u.getLockUntil() != null && u.getLockUntil().isAfter(now)) {
+                throw new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Tài khoản bị khóa 30 phút do nhập sai quá nhiều lần");
+            } else {
+                // Hết hạn khóa → mở khóa
+                u.setLocked(false);
+                u.setLockUntil(null);
+                u.setFailedLoginAttempts(0);
+            }
+        }
+
+        // 2. Sai mật khẩu
+        if (!encoder.matches(r.password(), u.getPasswordHash())) {
+            int failCount = u.getFailedLoginAttempts() + 1;
+            u.setFailedLoginAttempts(failCount);
+
+            // 3. Nhập sai quá 5 lần → khóa 30 phút
+            if (failCount >= 5) {
+                u.setLocked(true);
+                u.setLockUntil(now.plus(Duration.ofMinutes(30)));
+            }
+
+            users.save(u);
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng");
+        }
 
-        // ⬇️ Kiểm tra xác thực email
-        if (!u.isEmailVerified())
+        // 4. Kiểm tra xác thực email
+        if (!u.isEmailVerified()) {
             throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN, "Tài khoản chưa được xác thực email, vui lòng kiểm tra hộp thư");
+                    HttpStatus.FORBIDDEN,
+                    "Tài khoản chưa được xác thực email, vui lòng kiểm tra hộp thư");
+        }
 
-        // Cập nhật thời gian đăng nhập
-        u.setLastLoginAt(Instant.now());
+        // 5. Đăng nhập thành công → reset trạng thái lỗi
+        u.setFailedLoginAttempts(0);
+        u.setLocked(false);
+        u.setLockUntil(null);
+        u.setLastLoginAt(now);
         users.save(u);
 
-        // Phát token
+        // 6. Phát token
         return tokens.issue(u.getId(), u.getRole().name(), null, ua, ip);
     }
+
 
 
     public TokenService.Pair rotate(String refreshRaw) { return tokens.rotate(refreshRaw); }

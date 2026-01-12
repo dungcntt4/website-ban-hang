@@ -43,6 +43,8 @@ public class User {
 
     private Instant lastLoginAt;
 
+    private Instant lockUntil;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
