@@ -158,7 +158,7 @@ function HomePage() {
       id: 1,
       name: "Laptop gaming",
       image: "https://minhhightech.com/admin/sanpham/ONEXPLAYER-G1_26_6196.jpg",
-      href: "/products?category=laptop-gaming",
+      href: "/products/gaming",
     },
     {
       id: 2,
@@ -171,14 +171,14 @@ function HomePage() {
       id: 3,
       name: "Màn hình",
       image: "https://www.sieuthimaychu.vn/datafiles/setone/15985036335554.jpg",
-      href: "/products?category=monitor",
+      href: "/products/monitor-office",
     },
     {
       id: 4,
       name: "Phụ kiện",
       image:
         "https://phukienpico.com/wp-content/uploads/2024/11/Chuot-gaming-x1-4.jpg",
-      href: "/products?category=accessories",
+      href: "/products/headphone",
     },
   ];
 

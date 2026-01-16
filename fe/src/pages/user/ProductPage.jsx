@@ -21,6 +21,7 @@ function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [breadcrumb, setBreadcrumb] = useState([]);
 
   // filter popup
   const [openFilter, setOpenFilter] = useState(null);
@@ -104,6 +105,7 @@ function ProductPage() {
         setSpecFilters(data.specifications || []);
         setTotalPages(data.totalPages || 1);
         setLoading(false);
+        setBreadcrumb(data.breadcrumb || []);
       } catch (err) {
         if (err.name === "AbortError") {
           // request bị cancel do unmount/change dependency => bỏ qua
@@ -235,96 +237,160 @@ function ProductPage() {
         setShowSearch={setShowSearch}
       />
 
-      {/* ================= FILTER BAR (CANH GIỮA) ================= */}
-      <div className="filter-bar-wrapper">
-        <div className="filter-bar">
-          {/* BRAND DROPDOWN */}
-          <button
-            className="filter-btn"
-            onClick={() =>
-              setOpenFilter(openFilter === "brand" ? null : "brand")
-            }
-          >
-            Hãng {selectedBrands.length > 0 && `(${selectedBrands.length})`}
-          </button>
-
-          {/* SPEC FILTERS */}
-          {specFilters.map((spec) => (
-            <button
-              key={spec.attribute}
-              className="filter-btn"
-              onClick={() =>
-                setOpenFilter(
-                  openFilter === spec.attribute ? null : spec.attribute
-                )
-              }
-            >
-              {spec.attribute}
-              {selectedSpecs[spec.attribute]?.length > 0 &&
-                `(${selectedSpecs[spec.attribute].length})`}
-            </button>
-          ))}
-
-          {/* SORT */}
-          <select
-            className="sort-select"
-            value={sortOrder}
-            onChange={(e) => {
-              setSortOrder(e.target.value);
-              setPage(1);
+      {/* ================= PRODUCT GRID ================= */}
+      <main className="container my-2">
+        <nav
+          aria-label="breadcrumb"
+          style={{
+            "--bs-breadcrumb-divider":
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='%23005db4'/%3E%3C/svg%3E\")",
+          }}
+        >
+          <ol
+            className="breadcrumb"
+            style={{
+              marginBottom: 0,
+              fontSize: 14,
+              alignItems: "center",
             }}
           >
-            <option value="">Mặc định</option>
-            <option value="priceAsc">Giá tăng dần</option>
-            <option value="priceDesc">Giá giảm dần</option>
-          </select>
-        </div>
-      </div>
+            {/* Trang chủ */}
+            <li className="breadcrumb-item">
+              <Link
+                to="/"
+                style={{
+                  color: "#005db4",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
+              >
+                Trang chủ
+              </Link>
+            </li>
 
-      {/* ================= POPUP ================= */}
-      {openFilter && (
-        <div className="filter-popup">
-          <div className="popup-header">
-            <h5>Bộ lọc: {openFilter === "brand" ? "Hãng" : openFilter}</h5>
-            <button className="btn-close" onClick={() => setOpenFilter(null)} />
+            {/* Category breadcrumb từ BE */}
+            {breadcrumb?.map((c, index) => {
+              const isLast = index === breadcrumb.length - 1;
+
+              return (
+                <li
+                  key={c.slug}
+                  className="breadcrumb-item"
+                  aria-current={isLast ? "page" : undefined}
+                  style={{
+                    color: isLast ? "#333" : "#005db4",
+                    fontWeight: isLast ? 600 : 500,
+                  }}
+                >
+                  {isLast ? (
+                    c.name
+                  ) : (
+                    <Link
+                      to={`/products/${c.slug}`}
+                      style={{
+                        color: "#005db4",
+                        textDecoration: "none",
+                      }}
+                    >
+                      {c.name}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+
+        {/* ================= FILTER BAR (CANH GIỮA) ================= */}
+        <div className="filter-bar-wrapper">
+          <div className="filter-bar">
+            {/* BRAND DROPDOWN */}
+            <button
+              className="filter-btn"
+              onClick={() =>
+                setOpenFilter(openFilter === "brand" ? null : "brand")
+              }
+            >
+              Hãng {selectedBrands.length > 0 && `(${selectedBrands.length})`}
+            </button>
+
+            {/* SPEC FILTERS */}
+            {specFilters.map((spec) => (
+              <button
+                key={spec.attribute}
+                className="filter-btn"
+                onClick={() =>
+                  setOpenFilter(
+                    openFilter === spec.attribute ? null : spec.attribute
+                  )
+                }
+              >
+                {spec.attribute}
+                {selectedSpecs[spec.attribute]?.length > 0 &&
+                  `(${selectedSpecs[spec.attribute].length})`}
+              </button>
+            ))}
+
+            {/* SORT */}
+            <select
+              className="sort-select"
+              value={sortOrder}
+              onChange={(e) => {
+                setSortOrder(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">Mặc định</option>
+              <option value="priceAsc">Giá tăng dần</option>
+              <option value="priceDesc">Giá giảm dần</option>
+            </select>
           </div>
+        </div>
 
-          <div className="popup-body">
-            {/* BRAND POPUP */}
-            {openFilter === "brand" &&
-              brands.map((b) => (
-                <label className="filter-option" key={b.slug}>
-                  <input
-                    type="checkbox"
-                    checked={selectedBrands.includes(b.slug)}
-                    onChange={() => toggleBrand(b.slug)}
-                  />
-                  <img src={b.image} alt={b.name} className="brand-icon" />
-                  {b.name}
-                </label>
-              ))}
+        {/* ================= POPUP ================= */}
+        {openFilter && (
+          <div className="filter-popup">
+            <div className="popup-header">
+              <h5>Bộ lọc: {openFilter === "brand" ? "Hãng" : openFilter}</h5>
+              <button
+                className="btn-close"
+                onClick={() => setOpenFilter(null)}
+              />
+            </div>
 
-            {/* SPEC POPUP */}
-            {specFilters
-              .filter((s) => s.attribute === openFilter)
-              .flatMap((s) =>
-                s.values.map((value) => (
-                  <label className="filter-option" key={value}>
+            <div className="popup-body">
+              {/* BRAND POPUP */}
+              {openFilter === "brand" &&
+                brands.map((b) => (
+                  <label className="filter-option" key={b.slug}>
                     <input
                       type="checkbox"
-                      checked={selectedSpecs[openFilter]?.includes(value)}
-                      onChange={() => toggleSpec(openFilter, value)}
+                      checked={selectedBrands.includes(b.slug)}
+                      onChange={() => toggleBrand(b.slug)}
                     />
-                    {value}
+                    <img src={b.image} alt={b.name} className="brand-icon" />
+                    {b.name}
                   </label>
-                ))
-              )}
-          </div>
-        </div>
-      )}
+                ))}
 
-      {/* ================= PRODUCT GRID ================= */}
-      <main className="container my-4">
+              {/* SPEC POPUP */}
+              {specFilters
+                .filter((s) => s.attribute === openFilter)
+                .flatMap((s) =>
+                  s.values.map((value) => (
+                    <label className="filter-option" key={value}>
+                      <input
+                        type="checkbox"
+                        checked={selectedSpecs[openFilter]?.includes(value)}
+                        onChange={() => toggleSpec(openFilter, value)}
+                      />
+                      {value}
+                    </label>
+                  ))
+                )}
+            </div>
+          </div>
+        )}
         <div className="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
           {currentProducts.map((p) => (
             <div className="col" key={p.id}>
@@ -358,7 +424,9 @@ function ProductPage() {
 
                   {/* INFO */}
                   <div className="p-3">
-                    <h5 className="text-truncate">{p.name}</h5>
+                    <h5 className="text-truncate" style={{ color: "black" }}>
+                      {p.name}
+                    </h5>
 
                     <div className="price-area">
                       {p.salePriceMin ? (

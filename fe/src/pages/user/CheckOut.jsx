@@ -40,9 +40,20 @@ function Checkout() {
   useEffect(() => {
     apiFetch("/api/user-profiles/me")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(setProfile)
-      .catch(() => navigate("/profile"));
+      .then((data) => {
+        if (!data.phoneNumber) {
+          alert("Vui lòng cập nhật thông tin cá nhân trước khi thanh toán");
+          navigate("/profile"); // hoặc không navigate nếu em chỉ muốn báo lỗi
+          return;
+        }
+
+        setProfile(data); // ✅ chỉ set khi hợp lệ
+      })
+      .catch(() => {
+        alert("Không lấy được thông tin người dùng");
+      });
   }, [navigate]);
+
   const totalPrice = React.useMemo(() => {
     return selectedItems.reduce((sum, item) => {
       const v = item.productVariant;
@@ -55,61 +66,62 @@ function Checkout() {
 
   /* ================= PAYMENT ================= */
   const handlePayment = async () => {
-  try {
-    setIsLoading(true);
+    try {
+      setIsLoading(true);
 
-    // 1) CREATE ORDER
-    const orderRes = await apiFetch("/api/orders", {
-      method: "POST",
-      body: JSON.stringify({
-        paymentMethod: "VNPAY",
-        shippingAddress: profile.address,
-        receiverName: profile.fullName,
-        receiverPhone: profile.phoneNumber,
-        totalAmount: totalPrice,
-        items: selectedItems.map((item) => {
-          const v = item.productVariant;
-          const unitPrice = v.discountPrice ?? v.price;
-          return {
-            productVariantId: v.id,
-            quantity: item.quantity,
-            costPrice: v.costPrice,
-            unitPrice,
-            totalPrice: unitPrice * item.quantity,
-          };
+      // 1) CREATE ORDER
+      const orderRes = await apiFetch("/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          paymentMethod: "VNPAY",
+          shippingAddress: profile.address,
+          receiverName: profile.fullName,
+          receiverPhone: profile.phoneNumber,
+          totalAmount: totalPrice,
+          cartItemIds,
+          items: selectedItems.map((item) => {
+            const v = item.productVariant;
+            const unitPrice = v.discountPrice ?? v.price;
+            return {
+              productVariantId: v.id,
+              quantity: item.quantity,
+              costPrice: v.costPrice,
+              unitPrice,
+              totalPrice: unitPrice * item.quantity,
+            };
+          }),
         }),
-      }),
-    });
+      });
 
-    if (!orderRes.ok) throw new Error("Create order failed");
-    const order = await orderRes.json();
+      if (!orderRes.ok) throw new Error("Create order failed");
+      const order = await orderRes.json();
 
-    // 2) CREATE VNPAY URL
-    const payRes = await apiFetch("/api/payment/vnpay-create", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        orderCode: order.orderCode,
-        amount: String(order.totalAmount),
-        vnp_OrderInfo: `Thanh toán đơn hàng #${order.orderCode}`,
-        ordertype: "fashion",
-        language: "vn",
-      }).toString(),
-    });
+      // 2) CREATE VNPAY URL
+      const payRes = await apiFetch("/api/payment/vnpay-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          orderCode: order.orderCode,
+          amount: String(order.totalAmount),
+          vnp_OrderInfo: `Thanh toán đơn hàng #${order.orderCode}`,
+          ordertype: "fashion",
+          language: "vn",
+        }).toString(),
+      });
 
-    const payData = await payRes.json();
-    if (!payRes.ok || payData.code !== "00") {
-      throw new Error(payData.message || "Không tạo được link VNPay");
+      const payData = await payRes.json();
+      if (!payRes.ok || payData.code !== "00") {
+        throw new Error(payData.message || "Không tạo được link VNPay");
+      }
+
+      // BE đang trả { paymentUrl: "..." } (theo log của m)
+      window.location.replace(payData.paymentUrl);
+    } catch (e) {
+      alert("Thanh toán thất bại");
+    } finally {
+      setIsLoading(false);
     }
-
-    // BE đang trả { paymentUrl: "..." } (theo log của m)
-    window.location.replace(payData.paymentUrl);
-  } catch (e) {
-    alert("Thanh toán thất bại");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <div>
@@ -274,7 +286,7 @@ function Checkout() {
                                   <div className="ms-3">
                                     <p
                                       className="mb-0 fw-semibold text-dark text-truncate"
-                                      style={{ maxWidth: "220px" }}
+                                      style={{ maxWidth: "150px" }}
                                     >
                                       {name}
                                     </p>

@@ -7,6 +7,8 @@ import org.example.be.business.user.model.dto.CreateUserRequest;
 import org.example.be.business.user.model.dto.UpdateRoleRequest;
 import org.example.be.business.user.service.AdminUserService;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,12 +42,14 @@ public class AdminUserController {
     @PutMapping("/{id}/role")
     public void updateRole(
             @PathVariable Long id,
-            @RequestBody UpdateRoleRequest req
+            @RequestBody UpdateRoleRequest req,
+            @AuthenticationPrincipal User currentUser
     ) {
-        service.updateRole(id, req.getRole());
+        service.updateRole(id, req.getRole(),currentUser);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }

@@ -30,19 +30,44 @@ async function doFetch(path, options = {}) {
 }
 
 // Tự refresh 1 lần khi 401 (trừ request refresh)
-export async function apiFetch(path, options = {}, { retry = true, onUnauthorized } = {}) {
-  const isSelfRefresh = path.includes('/api/auth/refresh')
-  let resp = await doFetch(path, options)
-  if (resp.status !== 401 || isSelfRefresh) return resp
-  if (!retry) {
-    onUnauthorized?.(resp)
-    return resp
+export async function apiFetch(
+  path,
+  options = {},
+  { retry = true, onUnauthorized } = {}
+) {
+  const isSelfRefresh = path.includes("/api/auth/refresh");
+
+  let resp = await doFetch(path, options);
+
+  // 1️⃣ XỬ LÝ 401 (GIỮ LOGIC REFRESH)
+  if (resp.status === 401 && !isSelfRefresh) {
+    if (!retry) {
+      onUnauthorized?.(resp);
+      throw await buildError(resp);
+    }
+
+    try {
+      await doRefreshOnce();
+      resp = await doFetch(path, options); // 🔁 gọi lại sau refresh
+    } catch {
+      onUnauthorized?.(resp);
+      throw await buildError(resp);
+    }
   }
+
+  // 2️⃣ XỬ LÝ MỌI LỖI KHÁC
+  if (!resp.ok) {
+    throw await buildError(resp);
+  }
+
+  return resp;
+}
+async function buildError(resp) {
   try {
-    await doRefreshOnce() // các request 401 cùng chờ 1 promise
+    const data = await resp.json();
+    return new Error(data?.message || "Có lỗi xảy ra");
   } catch {
-    onUnauthorized?.(resp)
-    return resp
+    const text = await resp.text();
+    return new Error(text || "Có lỗi xảy ra");
   }
-  return doFetch(path, options) // gọi lại đúng 1 lần
 }

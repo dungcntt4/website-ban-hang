@@ -25,6 +25,7 @@ public class ProductPublicService {
     private final ProductVariantRepository productVariantRepo;
     private final InventoryRepository inventoryItemRepo;
     private final ProductReviewRepository reviewRepo;
+    private final CategoryRepository categoryRepo;
 
     @Transactional(readOnly = true)
     public HomeProductResponse getHomeProducts() {
@@ -118,13 +119,28 @@ public class ProductPublicService {
         List<ProductListItemDTO> productItems = products.stream()
                 .map(this::buildProductListItem)
                 .toList();
+        List<PagedProductListPublicResponse.CategoryBreadcrumbDTO> breadcrumb =
+                new ArrayList<>();
 
+        Category category = categoryRepo.findBySlug(categorySlug);
+
+        Category current = category;
+        while (current != null) {
+            breadcrumb.add(
+                    new PagedProductListPublicResponse.CategoryBreadcrumbDTO(
+                            current.getName(),
+                            current.getSlug()
+                    )
+            );
+            current = current.getParent();
+        }
+        Collections.reverse(breadcrumb);
         // ===== 5. Build response =====
         PagedProductListPublicResponse response = new PagedProductListPublicResponse();
         response.setProducts(productItems);
         response.setBrands(brandFilters);
         response.setSpecifications(specFilters);
-
+        response.setBreadcrumb(breadcrumb);
         response.setPageNum(pageNum);
         response.setPageSize(pageSize);
         response.setTotalElements(pageResult.getTotalElements());

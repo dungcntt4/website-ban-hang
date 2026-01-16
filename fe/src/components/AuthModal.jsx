@@ -161,7 +161,7 @@ function AuthModal({ open, onClose, initialTab = "login" }) {
       }
       const user = await login(loginEmail, loginPassword);
       console.log("User sau khi login:", user); 
-      if (user?.role === "ROLE_ADMIN") {
+      if (user?.role === "ROLE_ADMIN"||user?.role === "ROLE_SUPER_ADMIN") {
         navigate("/dashboard", { replace: true });
       } else {
         navigate("/", { replace: true });

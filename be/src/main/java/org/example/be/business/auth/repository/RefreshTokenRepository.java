@@ -23,4 +23,5 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
             String familyId,
             Instant now
     );
+    void deleteByUserId(Long userId);
 }

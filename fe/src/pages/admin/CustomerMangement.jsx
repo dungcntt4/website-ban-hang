@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/admin/Sidebar.jsx";
 import HeaderAdmin from "../../components/admin/HeaderAdmin.jsx";
 import { apiFetch } from "../../api/client";
-
+import { useAuth } from "../../context/AuthContext";
 function CustomerManagement() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeMenu, setActiveMenu] = useState("customermanagement");
@@ -16,6 +16,7 @@ function CustomerManagement() {
   const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
   const [selectedUserId, setSelectedUserId] = useState(null);
 
+  const { user: authUser, loading: authLoading } = useAuth();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
@@ -62,19 +63,11 @@ function CustomerManagement() {
   };
 
   const handleToggleLock = async (userId) => {
-     const targetUser = users.find((u) => u.id === userId);
-  if (!targetUser || targetUser.role !== "ROLE_CUSTOMER") {
-    setToastType("danger");
-    setToastMessage("Chỉ được cập nhật tài khoản CUSTOMER");
-    setShowToast(true);
-    return;
-  }
     try {
       const res = await apiFetch(`/api/admin/users/${userId}/toggle-lock`, {
         method: "PUT",
       });
-      if (!res.ok) throw new Error(await res.text());
-
+      if (!res.ok) throw new Error(await parseError(res));
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, locked: !u.locked } : u))
       );
@@ -94,18 +87,11 @@ function CustomerManagement() {
     setshowDeleteModal(true);
   };
   const confirmDelete = async () => {
-    const targetUser = users.find((u) => u.id === userId);
-  if (!targetUser || targetUser.role !== "ROLE_CUSTOMER") {
-    setToastType("danger");
-    setToastMessage("Chỉ được cập nhật tài khoản CUSTOMER");
-    setShowToast(true);
-    return;
-  }
     try {
       const res = await apiFetch(`/api/admin/users/${selectedUserId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await parseError(res));
 
       setToastType("success");
       setToastMessage("Xóa tài khoản thành công");
@@ -126,20 +112,12 @@ function CustomerManagement() {
   };
 
   const confirmUpdateRole = async () => {
-    const targetUser = users.find((u) => u.id === selectedUserId);
-
-  if (!targetUser || targetUser.role !== "ROLE_CUSTOMER") {
-    setToastType("danger");
-    setToastMessage("Chỉ được cập nhật tài khoản CUSTOMER");
-    setShowToast(true);
-    return;
-  }
     try {
       const res = await apiFetch(`/api/admin/users/${selectedUserId}/role`, {
         method: "PUT",
         body: JSON.stringify({ role: newRole }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await parseError(res));
 
       setToastType("success");
       setToastMessage("Cập nhật quyền thành công");
@@ -184,8 +162,7 @@ function CustomerManagement() {
           role: newRole,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
-
+      if (!res.ok) throw new Error(await parseError(res));
       setToastType("success");
       setToastMessage("Tạo tài khoản thành công");
       setShowToast(true);
@@ -198,8 +175,11 @@ function CustomerManagement() {
     }
   };
   useEffect(() => {
+    if (authLoading) return;
+    if (!authUser) return;
+
     fetchUsers();
-  }, [currentPage, searchTerm]);
+  }, [authLoading, authUser, currentPage, searchTerm]);
 
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -227,9 +207,8 @@ function CustomerManagement() {
           showUserDropdown={showUserDropdown}
           toggleUserDropdown={toggleUserDropdown}
         />
-        <main className="flex-grow-1 overflow-auto bg-light py-4 px-2">
+        <main className="flex-grow-1 overflow-auto bg-light p-4">
           <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
-            {/* Search sản phẩm */}
             <div className="input-group" style={{ maxWidth: "300px" }}>
               <span className="input-group-text bg-white border-end-0">
                 <i className="fas fa-search text-muted"></i>
@@ -285,12 +264,6 @@ function CustomerManagement() {
                     </th>
                     <th
                       scope="col"
-                      className="ps-4 pe-4 py-3 text-start text-uppercase small text-secondary align-middle text-nowrap"
-                    >
-                      Loại tài khoản
-                    </th>
-                    <th
-                      scope="col"
                       className="ps-4 pe-4 py-3 text-start text-uppercase small text-secondary align-middle text-nowrap text-end"
                     >
                       Trạng thái hồ sơ
@@ -333,34 +306,6 @@ function CustomerManagement() {
                             </div>
                           </div>
                         </div>
-                      </td>
-
-                      <td className="ps-4 pe-4 py-3 align-middle text-secondary small text-nowrap  text-center">
-                        {user.googleAccount ? (
-                          <span
-                            className="badge rounded-pill"
-                            style={{
-                              backgroundColor: "#dbeafe",
-                              color: "#1e40af",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                            }}
-                          >
-                            Google
-                          </span>
-                        ) : (
-                          <span
-                            className="badge rounded-pill"
-                            style={{
-                              backgroundColor: "#f3f4f6",
-                              color: "#374151",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                            }}
-                          >
-                            Thường
-                          </span>
-                        )}
                       </td>
 
                       <td className="ps-4 pe-4 py-3 align-middle text-secondary small text-nowrap text-center">
@@ -406,7 +351,18 @@ function CustomerManagement() {
                         </div>
                       </td>
                       <td className="ps-4 pe-4 py-3 align-middle text-nowrap text-center">
-                        {user.role === "ROLE_ADMIN" ? (
+                        {user.role === "ROLE_SUPER_ADMIN" ? (
+                          <span
+                            className="badge rounded-pill"
+                            style={{
+                              backgroundColor: "#111827", // đen
+                              color: "#facc15", // vàng
+                              fontWeight: "600",
+                            }}
+                          >
+                            SUPER ADMIN
+                          </span>
+                        ) : user.role === "ROLE_ADMIN" ? (
                           <span
                             className="badge rounded-pill"
                             style={{

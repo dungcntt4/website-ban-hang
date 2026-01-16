@@ -18,7 +18,7 @@ function GoogleLoginButton({ onSuccess }) {
         try {
           const user = await loginWithGoogle(response.credential)
 
-          if (user?.role === 'ROLE_ADMIN') {
+          if (user?.role === 'ROLE_ADMIN'||user?.role === 'ROLE_SUPER_ADMIN') {
             navigate('/dashboard', { replace: true })
           } else {
             navigate('/', { replace: true })

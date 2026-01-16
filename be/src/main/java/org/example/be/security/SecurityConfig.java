@@ -30,7 +30,7 @@ public class SecurityConfig { // class cấu hình //
                         // (tuỳ) tài liệu API
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Admin
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN","SUPER_ADMIN")
                         // Còn lại cần login
                         .anyRequest().authenticated()
                 )

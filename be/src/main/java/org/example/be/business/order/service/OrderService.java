@@ -2,6 +2,7 @@ package org.example.be.business.order.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.be.business.auth.entity.User;
+import org.example.be.business.cart.repository.CartItemRepository;
 import org.example.be.business.order.model.dto.OrderDetailResponse;
 import org.example.be.business.order.model.dto.OrderRequest;
 import org.example.be.business.order.model.entity.Order;
@@ -45,6 +46,7 @@ public class OrderService {
     private final PurchaseReceiptItemRepository purchaseReceiptItemRepository;
     private final OrderItemCostRepository orderItemCostRepository;
     private final ProductReviewService productReviewService;
+    private final CartItemRepository cartItemRepository;
 
     @Transactional
     public Order createOrder(User user, OrderRequest req) {
@@ -66,7 +68,6 @@ public class OrderService {
                     .findById(i.getProductVariantId())
                     .orElseThrow(() -> new RuntimeException("Product variant not found"));
 
-            // 1️⃣ CHECK TỒN (NHANH – DÙNG INVENTORY)
             InventoryItem inv = inventoryItemRepository
                     .findByVariant(variant)
                     .orElseThrow(() -> new RuntimeException("Inventory not found"));
@@ -76,7 +77,6 @@ public class OrderService {
                 throw new RuntimeException("Not enough stock for " + variant.getSku());
             }
 
-            // 2️⃣ TẠO ORDER ITEM
             OrderItem item = new OrderItem();
             item.setOrder(order);
             item.setProductVariant(variant);
@@ -85,11 +85,10 @@ public class OrderService {
             item.setTotalPrice(i.getTotalPrice());
             orderItemRepository.save(item);
 
-            // 3️⃣ RESERVE KHO (CHỈ CỘNG)
             inv.setStockReserved(inv.getStockReserved() + i.getQuantity());
             inventoryItemRepository.save(inv);
         }
-
+        cartItemRepository.deleteAllById(req.getCartItemIds());
         return order;
     }
 

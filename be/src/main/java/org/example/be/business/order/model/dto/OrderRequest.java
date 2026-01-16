@@ -20,7 +20,7 @@ public class OrderRequest {
     private String receiverName;
     private String receiverPhone;
     private String shippingAddress;
-
+    private List<UUID> cartItemIds;
     /** Danh sách sản phẩm */
     private List<OrderItemRequest> items;
 

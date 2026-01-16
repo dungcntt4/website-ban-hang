@@ -2,6 +2,7 @@ package org.example.be.business.user.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.be.business.auth.entity.User;
+import org.example.be.business.auth.repository.RefreshTokenRepository;
 import org.example.be.business.auth.repository.UserRepository;
 import org.example.be.business.order.model.entity.OrderStatus;
 import org.example.be.business.order.repository.OrderRepository;
@@ -28,6 +29,7 @@ public class AdminUserService {
     private final PasswordEncoder passwordEncoder;
     private final UserProfileRepository userProfileRepo;
     private final OrderRepository orderRepo;
+    private final RefreshTokenRepository refreshTokenRepo;
 
     public Page<AdminUserResponse> getPage(int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -86,18 +88,66 @@ public class AdminUserService {
     }
 
     public void toggleLock(Long id) {
-        User user = userRepo.findById(id).orElseThrow();
+        User user = userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == User.Role.ROLE_SUPER_ADMIN) {
+            throw new RuntimeException("Không thể khóa tài khoản SUPER ADMIN");
+        }
+
         user.setLocked(!user.isLocked());
         userRepo.save(user);
     }
 
-    public void updateRole(Long id, String role) {
-        User user = userRepo.findById(id).orElseThrow();
-        user.setRole(User.Role.valueOf(role));
-        userRepo.save(user);
+    public void updateRole(Long id, String role, User currentUser) {
+
+        // 1️⃣ Chỉ SUPER_ADMIN được phép
+        if (currentUser.getRole() != User.Role.ROLE_SUPER_ADMIN) {
+            throw new RuntimeException("Bạn không có quyền cập nhật vai trò");
+        }
+
+        User targetUser = userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 2️⃣ Không cho sửa SUPER_ADMIN
+        if (targetUser.getRole() == User.Role.ROLE_SUPER_ADMIN) {
+            throw new RuntimeException("Không thể chỉnh sửa SUPER ADMIN");
+        }
+
+        User.Role newRole;
+        try {
+            newRole = User.Role.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Vai trò không hợp lệ");
+        }
+
+        // 3️⃣ Không cho gán SUPER_ADMIN qua API
+        if (newRole == User.Role.ROLE_SUPER_ADMIN) {
+            throw new RuntimeException("Không thể gán quyền SUPER ADMIN");
+        }
+
+        // 4️⃣ OK → update
+        targetUser.setRole(newRole);
+        userRepo.save(targetUser);
     }
 
+
     public void delete(Long id) {
-        userRepo.deleteById(id);
+        User user = userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == User.Role.ROLE_SUPER_ADMIN) {
+            throw new RuntimeException("Không thể xóa tài khoản SUPER ADMIN");
+        }
+
+        boolean profileCompleted =
+                userProfileRepo.findDefaultByUserId(user.getId()).isPresent();
+
+        if (profileCompleted) {
+            throw new RuntimeException("Chỉ được xóa tài khoản chưa hoàn thành hồ sơ");
+        }
+
+        refreshTokenRepo.deleteByUserId(user.getId());
+        userRepo.delete(user);
     }
 }

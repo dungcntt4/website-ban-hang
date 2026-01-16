@@ -15,6 +15,7 @@ const FALLBACK_COLLECTIONS = [
     imageUrl:
       "https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/2022_4_5_637847779904332860_pc-la-gi.jpg",
     status: "VISIBLE",
+    link: "/products/gaming",
   },
   {
     id: "mock-2",
@@ -24,6 +25,7 @@ const FALLBACK_COLLECTIONS = [
     imageUrl:
       "https://cdn2.fptshop.com.vn/unsafe/Uploads/images/tin-tuc/144146/Originals/toc-do-xu-li-du-lieu-cao.jpg",
     status: "VISIBLE",
+    link: "/collections/pc-van-phong",
   },
   {
     id: "mock-3",
@@ -33,36 +35,14 @@ const FALLBACK_COLLECTIONS = [
     imageUrl:
       "https://cdn2.fptshop.com.vn/unsafe/Uploads/images/tin-tuc/144146/Originals/luu-tru-tuyet-doi.jpg",
     status: "VISIBLE",
+    link: "/collections/phu-kien",
   },
 ];
 
+
 function HeroBanner() {
-  const [collections, setCollections] = useState([]);
+  const [collections, setCollections] = useState(FALLBACK_COLLECTIONS);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetch("http://localhost:8080/api/products/collections")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to fetch collections");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        // Nếu API không có collection hoặc rỗng → dùng mock
-        if (!Array.isArray(data) || data.length === 0) {
-          setCollections(FALLBACK_COLLECTIONS);
-        } else {
-          setCollections(data);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        // Lỗi API cũng fallback sang mock
-        setCollections(FALLBACK_COLLECTIONS);
-      });
-  }, []);
-
   const visibleCollections = collections.filter(
     (collection) => collection.status === "VISIBLE"
   );
@@ -121,7 +101,7 @@ function HeroBanner() {
                         className="btn btn-warning fw-semibold px-4 py-2 rounded-pill"
                         style={{ backgroundColor: "#ede734", border: "none" }}
                         onClick={() =>
-                          navigate(`/collection?id=${collection.id}`)
+                          navigate(`${collection.link}`)
                         }
                       >
                         Khám phá ngay
@@ -129,7 +109,7 @@ function HeroBanner() {
                       <button
                         className="btn btn-light fw-semibold px-4 py-2 rounded-pill border border-white"
                         onClick={() =>
-                          navigate(`/collection?id=${collection.id}`)
+                          navigate(`${collection.link}`)
                         }
                       >
                         Xem chi tiết
