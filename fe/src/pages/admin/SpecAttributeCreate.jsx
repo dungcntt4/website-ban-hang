@@ -170,7 +170,7 @@ function SpecAttributeCreate() {
         />
 
         {/* Bớt padding phải để hết khoảng trắng */}
-        <main className="flex-grow-1 overflow-auto bg-light p-3 pe-0">
+        <main className="flex-grow-1 overflow-auto bg-light p-3">
           <div className="container-fluid px-0 pe-0">
             {loadingDetail && isEditMode && (
               <div className="alert alert-info py-2">Đang tải chi tiết thuộc tính...</div>

@@ -9,5 +9,5 @@ button { font-family: inherit; }
 
 
 .center { display:flex; align-items:center; justify-content:center; min-height: 60vh; }
-.card { background:#fff; border-radius:12px; box-shadow: var(--modal-shadow); max-width: 520px; }
+.card { background:#fff; border-radius:12px; box-shadow: var(--modal-shadow); max-width: 520px; overflow: hidden;}
 a { color: #0b57d0; text-decoration: none; }

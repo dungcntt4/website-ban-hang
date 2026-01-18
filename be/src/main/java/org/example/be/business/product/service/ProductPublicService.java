@@ -149,7 +149,6 @@ public class ProductPublicService {
         return response;
     }
 
-    // ================== HÀM PHỤ ==================
 
     private List<BrandListItemResponse> buildBrandFilter() {
         return brandRepo.findAll().stream()

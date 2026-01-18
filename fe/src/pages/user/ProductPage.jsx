@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import SearchOverlay from "../../components/SearchOverlay";
-// import Chatbot from "../../components/Chatbot"; // ❌ bỏ tạm
+import Chatbot from "../../components/Chatbot";
 import { Link, useSearchParams, useParams } from "react-router-dom";
 import "./ProductPage.css";
 
@@ -230,7 +230,7 @@ function ProductPage() {
   // =============== UI MAIN ===============
   return (
     <>
-      {/* <Chatbot /> */}
+      <Chatbot />
 
       <Header
         setShowLoginModal={setShowLoginModal}
@@ -497,7 +497,6 @@ function ProductPage() {
           </div>
         )}
       </main>
-
       <Footer />
       {showSearch && <SearchOverlay onClose={() => setShowSearch(false)} />}
     </>

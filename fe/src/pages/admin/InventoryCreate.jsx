@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/admin/Sidebar";
 import HeaderAdmin from "../../components/admin/HeaderAdmin";
 import { apiFetch } from "../../api/client";
-
+import Select from "react-select";
 export default function InventoryCreate() {
   const navigate = useNavigate();
 
@@ -69,7 +69,7 @@ export default function InventoryCreate() {
 
   function updateRow(id, key, value) {
     setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, [key]: value } : it))
+      prev.map((it) => (it.id === id ? { ...it, [key]: value } : it)),
     );
   }
 
@@ -99,7 +99,7 @@ export default function InventoryCreate() {
       note,
       items: items
         .filter(
-          (it) => it.variant_id && it.quantity > 0 && it.import_price !== ""
+          (it) => it.variant_id && it.quantity > 0 && it.import_price !== "",
         )
         .map((it) => ({
           variant_id: it.variant_id,
@@ -204,10 +204,7 @@ export default function InventoryCreate() {
           </div>
 
           {/* 2) Danh sách lô nhập */}
-          <div
-            className="card shadow-sm w-100"
-            style={{ maxWidth: "none" }}
-          >
+          <div className="card shadow-sm w-100" style={{ maxWidth: "none" }}>
             <div className="card-header bg-white d-flex justify-content-between align-items-center">
               <strong>2) Danh sách lô nhập</strong>
               <button
@@ -246,23 +243,35 @@ export default function InventoryCreate() {
                   {items.map((it) => (
                     <tr key={it.id}>
                       <td className="ps-4">
-                        <select
-                          className="form-select"
-                          value={it.variant_id}
-                          onChange={(e) =>
-                            updateRow(it.id, "variant_id", e.target.value)
+                        <Select
+                          isClearable
+                          isSearchable
+                          isDisabled={saving || loadingVariants}
+                          options={variants.map((v) => ({
+                            value: v.id,
+                            label: `${v.productName} — ${v.variantName}`,
+                          }))}
+                          onChange={(opt) =>
+                            updateRow(it.id, "variant_id", opt ? opt.value : "")
                           }
-                          disabled={saving || loadingVariants || !variants.length}
-                        >
-                          <option value="">
-                            -- Chọn biến thể (SKU / sản phẩm / cấu hình) --
-                          </option>
-                          {variants.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.productName} — {v.variantName}
-                            </option>
-                          ))}
-                        </select>
+                          menuPortalTarget={document.body}
+                          menuPosition="fixed"
+                          styles={{
+                            menuPortal: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              maxHeight: 240,
+                            }),
+                            menuList: (base) => ({
+                              ...base,
+                              maxHeight: 240,
+                            }),
+                          }}
+                        />
+
                         <div className="form-text small text-muted">
                           Hiển thị: SKU • Tên sản phẩm • Cấu hình/biến thể.
                         </div>

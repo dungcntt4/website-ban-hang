@@ -197,13 +197,38 @@
 }
 
 .page-btn.active {
-  background: #0057ff;
-  border-color: #0057ff;
-  color: white;
+  background: #ede734;
+  border-color: #ede734;
+  color: black;
   font-weight: bold;
 }
 
 .page-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.sort-select {
+  appearance: none;        /* ẩn style native */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  padding: 8px 36px 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  /* mũi tên custom */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #005db4;
+  box-shadow: 0 0 0 2px rgba(0, 93, 180, 0.15);
 }

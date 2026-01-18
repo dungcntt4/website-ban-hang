@@ -6,6 +6,7 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import SearchOverlay from "../../components/SearchOverlay";
 import { useAuth } from "../../context/AuthContext";
+import Chatbot from "../../components/Chatbot";
 
 import "./ProductDetail.css";
 
@@ -209,6 +210,7 @@ export default function ProductDetail() {
 
   return (
     <>
+      <Chatbot />
       <Header
         setShowLoginModal={setShowLoginModal}
         setShowSearch={setShowSearch}
@@ -224,7 +226,7 @@ export default function ProductDetail() {
               <div className="main-image">
                 {/* BADGE SALE GÓC ẢNH – CHỈ HIỆN KHI VARIANT ĐANG CHỌN CÓ GIẢM GIÁ */}
                 {selectedHasDiscount && (
-                  <div className="sale-badge-image">
+                  <div className="sale-badge-image"  style={{marginRight:"25px"}}>
                     -{selectedDiscountPercent}%
                   </div>
                 )}
