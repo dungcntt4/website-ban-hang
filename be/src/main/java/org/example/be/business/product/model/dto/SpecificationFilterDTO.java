@@ -6,5 +6,5 @@ import java.util.List;
 @Data
 public class SpecificationFilterDTO {
     private String attribute;
-    private List<String> values;
+    private List<SpecificationValueDTO> values;
 }

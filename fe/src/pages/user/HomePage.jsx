@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Header from "../../components/Header"; // chỉnh lại path nếu khác
-import HeroBanner from "../../components/HeroBanner"; // chỉnh lại path nếu khác
+import Header from "../../components/Header"; 
+import HeroBanner from "../../components/HeroBanner"; 
 import Footer from "../../components/Footer";
 import SearchOverlay from "../../components/SearchOverlay";
 import Chatbot from "../../components/Chatbot";

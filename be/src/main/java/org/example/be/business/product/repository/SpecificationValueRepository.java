@@ -8,5 +8,6 @@ import java.util.UUID;
 
 public interface SpecificationValueRepository extends JpaRepository<SpecificationValue, UUID> {
     List<SpecificationValue> findByAttributeId(UUID attributeId);
+    List<SpecificationValue> findAllByIdIn(List<UUID> specificationValueIds);
 }
 

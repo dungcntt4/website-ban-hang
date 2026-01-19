@@ -43,7 +43,7 @@ function Checkout() {
       .then((data) => {
         if (!data.phoneNumber) {
           alert("Vui lòng cập nhật thông tin cá nhân trước khi thanh toán");
-          navigate("/profile"); // hoặc không navigate nếu em chỉ muốn báo lỗi
+          navigate("/profile");
           return;
         }
 

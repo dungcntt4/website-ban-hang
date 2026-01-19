@@ -27,22 +27,31 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByDeletedFalseAndPublishedTrue();
 
     @Query("""
-        select distinct p
-        from Product p
-        join p.productCategories pc
-        join pc.category c
-        left join p.productSpecificationValues psv
-        left join psv.specificationValue sv
-        where p.deleted = false
-          and p.published = true
-          and c.slug = :slug
-          and (:brandSlugs is null or p.brand.slug in :brandSlugs)
-          and (:specValueIds is null or sv.id in :specValueIds)
-    """)
+    select p
+    from Product p
+    join p.productCategories pc
+    join pc.category c
+    left join p.productSpecificationValues psv
+    left join psv.specificationValue sv
+    where p.deleted = false
+      and p.published = true
+      and c.slug = :slug
+      and (:brandSlugs is null or p.brand.slug in :brandSlugs)
+      and (
+            :attrCount = 0
+            or sv.id in :specValueIds
+      )
+    group by p.id
+    having (
+            :attrCount = 0
+            or count(distinct sv.attribute.id) = :attrCount
+    )
+""")
     Page<Product> findPublishedByCategoryWithFilters(
             @Param("slug") String slug,
             @Param("brandSlugs") List<String> brandSlugs,
             @Param("specValueIds") List<UUID> specValueIds,
+            @Param("attrCount") long attrCount,
             Pageable pageable
     );
 

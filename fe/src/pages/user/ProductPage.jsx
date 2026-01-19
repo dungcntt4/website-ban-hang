@@ -28,20 +28,11 @@ function ProductPage() {
 
   // selected filters
   const [selectedBrands, setSelectedBrands] = useState(
-    searchParams.getAll("brand")
+    searchParams.getAll("brand"),
   );
 
   // selected specs (không lấy brand/sort/page từ query)
-  const [selectedSpecs, setSelectedSpecs] = useState(() => {
-    const map = {};
-    searchParams.forEach((val, key) => {
-      if (key !== "brand" && key !== "sort" && key !== "page") {
-        if (!map[key]) map[key] = [];
-        map[key].push(val);
-      }
-    });
-    return map;
-  });
+  const [selectedSpecs, setSelectedSpecs] = useState({});
 
   const [sortOrder, setSortOrder] = useState(searchParams.get("sort") || "");
   const [page, setPage] = useState(Number(searchParams.get("page") || 1));
@@ -84,9 +75,9 @@ function ProductPage() {
         // brand filter
         selectedBrands.forEach((b) => params.append("brand", b));
 
-        // spec filter: hiện tại BE chưa nhận specValue, nên chưa gửi
-        // sau này nếu trả về id của specificationValue thì append ở đây:
-        // params.append("specificationValue", id);
+        Object.values(selectedSpecs).forEach((ids) => {
+          ids.forEach((id) => params.append("specificationValue", id));
+        });
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -122,7 +113,7 @@ function ProductPage() {
     return () => {
       controller.abort();
     };
-  }, [categorySlug, selectedBrands, sortOrder, page, pageSize]);
+  }, [categorySlug, selectedBrands, selectedSpecs, sortOrder, page, pageSize]);
 
   // =============== SYNC URL PARAMS (KHÔNG ĐẨY CATEGORY VÀO QUERY) ===============
   useEffect(() => {
@@ -130,8 +121,8 @@ function ProductPage() {
 
     selectedBrands.forEach((b) => params.append("brand", b));
 
-    Object.keys(selectedSpecs).forEach((attr) => {
-      selectedSpecs[attr].forEach((val) => params.append(attr, val));
+    Object.values(selectedSpecs).forEach((ids) => {
+      ids.forEach((id) => params.append("specificationValue", id));
     });
 
     if (sortOrder) params.set("sort", sortOrder);
@@ -147,31 +138,21 @@ function ProductPage() {
     // brand filter (dự phòng, BE đã filter rồi)
     if (selectedBrands.length > 0) {
       list = list.filter((p) =>
-        selectedBrands.includes(p.brand?.slug || p.brand?.name)
+        selectedBrands.includes(p.brand?.slug || p.brand?.name),
       );
     }
-
-    // specifications filter (FE xử lý)
-    Object.keys(selectedSpecs).forEach((attr) => {
-      const values = selectedSpecs[attr];
-      if (!values || values.length === 0) return;
-      list = list.filter((p) => {
-        const specValues = p.specifications?.[attr] || [];
-        return values.some((v) => specValues.includes(v));
-      });
-    });
 
     // sort FE (dự phòng: nếu BE sort rồi thì kết quả cùng chiều)
     if (sortOrder === "priceAsc") {
       list.sort(
         (a, b) =>
-          (a.salePriceMin || a.priceMin) - (b.salePriceMin || b.priceMin)
+          (a.salePriceMin || a.priceMin) - (b.salePriceMin || b.priceMin),
       );
     }
     if (sortOrder === "priceDesc") {
       list.sort(
         (a, b) =>
-          (b.salePriceMin || b.priceMin) - (a.salePriceMin || a.priceMin)
+          (b.salePriceMin || b.priceMin) - (a.salePriceMin || a.priceMin),
       );
     }
 
@@ -182,23 +163,26 @@ function ProductPage() {
 
   const toggleBrand = (slug) => {
     setSelectedBrands((prev) =>
-      prev.includes(slug) ? prev.filter((b) => b !== slug) : [...prev, slug]
+      prev.includes(slug) ? prev.filter((b) => b !== slug) : [...prev, slug],
     );
     setPage(1);
+    setOpenFilter(null);
   };
 
-  const toggleSpec = (attr, value) => {
+  const toggleSpec = (attribute, specValueId) => {
     setSelectedSpecs((prev) => {
       const copy = { ...prev };
-      if (!copy[attr]) copy[attr] = [];
-      if (copy[attr].includes(value)) {
-        copy[attr] = copy[attr].filter((v) => v !== value);
-      } else {
-        copy[attr].push(value);
-      }
+      if (!copy[attribute]) copy[attribute] = [];
+
+      copy[attribute] = copy[attribute].includes(specValueId)
+        ? copy[attribute].filter((id) => id !== specValueId)
+        : [...copy[attribute], specValueId];
+
       return copy;
     });
+
     setPage(1);
+    setOpenFilter(null);
   };
 
   // =============== UI LOADING ===============
@@ -321,7 +305,7 @@ function ProductPage() {
                 className="filter-btn"
                 onClick={() =>
                   setOpenFilter(
-                    openFilter === spec.attribute ? null : spec.attribute
+                    openFilter === spec.attribute ? null : spec.attribute,
                   )
                 }
               >
@@ -378,15 +362,15 @@ function ProductPage() {
                 .filter((s) => s.attribute === openFilter)
                 .flatMap((s) =>
                   s.values.map((value) => (
-                    <label className="filter-option" key={value}>
+                    <label className="filter-option" key={value.id}>
                       <input
                         type="checkbox"
-                        checked={selectedSpecs[openFilter]?.includes(value)}
-                        onChange={() => toggleSpec(openFilter, value)}
+                        checked={selectedSpecs[openFilter]?.includes(value.id)}
+                        onChange={() => toggleSpec(openFilter, value.id)}
                       />
-                      {value}
+                      {value.text}
                     </label>
-                  ))
+                  )),
                 )}
             </div>
           </div>
@@ -415,7 +399,7 @@ function ProductPage() {
                       <div className="sale-badge">
                         -
                         {Math.round(
-                          ((p.priceMin - p.salePriceMin) / p.priceMin) * 100
+                          ((p.priceMin - p.salePriceMin) / p.priceMin) * 100,
                         )}
                         %
                       </div>

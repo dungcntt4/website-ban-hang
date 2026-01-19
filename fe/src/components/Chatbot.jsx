@@ -10,7 +10,7 @@ function Chatbot() {
   const buttonRef = useRef(null);
 
   const ai = new GoogleGenAI({
-    apiKey: "AIzaSyA7rGwSH3HisHQv2fNi5afUWz5-ex621Q0",
+    apiKey: import.meta.env.VITE_GOOGLE_GENAI_KEY,
   });
   useEffect(() => {
     const fetchChatbotProducts = async () => {
@@ -98,6 +98,20 @@ QUY TẮC BẮT BUỘC:
 - KHÔNG suy đoán ngoài dữ liệu đã cung cấp
 - Nếu KHÔNG có sản phẩm phù hợp → nói rõ là hiện chưa có sản phẩm đáp ứng
 - Không nhắc đến từ “AI”, “dữ liệu”, “JSON” hay “hệ thống”
+
+YÊU CẦU BUILD TRỌN BỘ (BẮT BUỘC):
+- Khi khách yêu cầu "build máy", "mua máy", "chơi game"
+→ PHẢI tư vấn TRỌN BỘ GỒM:
+  1. 01 PC / Case
+  2. 01 Màn hình
+  3. 01 Bàn phím
+  4. 01 Chuột
+
+- PHẢI cộng TỔNG GIÁ
+- TỔNG GIÁ KHÔNG ĐƯỢC VƯỢT NGÂN SÁCH
+- KHÔNG được chỉ tư vấn riêng PC
+- Nếu KHÔNG đủ sản phẩm → báo không đáp ứng
+
 
 CÁCH TƯ VẤN:
 1. Phân tích nhu cầu của khách:

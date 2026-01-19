@@ -85,9 +85,27 @@ public class ProductPublicService {
         if (brandSlugs != null && brandSlugs.isEmpty()) {
             brandSlugs = null;
         }
-        if (specValueIds != null && specValueIds.isEmpty()) {
-            specValueIds = null;
+        if (specValueIds == null) {
+            specValueIds = Collections.emptyList();
         }
+
+        // ===== GROUP SPEC VALUES BY ATTRIBUTE =====
+        Map<UUID, List<UUID>> specMap = Collections.emptyMap();
+
+        if (specValueIds != null && !specValueIds.isEmpty()) {
+            List<SpecificationValue> values =
+                    specValueRepo.findAllByIdIn(specValueIds);
+
+            specMap = new HashMap<>();
+
+            for (SpecificationValue sv : values) {
+                UUID attrId = sv.getAttribute().getId();
+
+                specMap.computeIfAbsent(attrId, k -> new ArrayList<>())
+                        .add(sv.getId());
+            }
+        }
+        long attrCount = specMap.size();
 
         // ===== Sort (hiện tại sort theo priceMin) =====
         Sort sortSpec = Sort.unsorted();
@@ -104,8 +122,10 @@ public class ProductPublicService {
                 categorySlug,
                 brandSlugs,
                 specValueIds,
+                attrCount,
                 pageable
         );
+
 
         List<Product> products = pageResult.getContent();
 
@@ -166,12 +186,17 @@ public class ProductPublicService {
     private List<SpecificationFilterDTO> buildSpecificationFilter() {
         return specAttrRepo.findAll().stream()
                 .map(attr -> {
-                    List<String> values = specValueRepo.findByAttributeId(attr.getId())
-                            .stream()
-                            .map(SpecificationValue::getValueText)
-                            .distinct()
-                            .sorted()
-                            .toList();
+                    List<SpecificationValueDTO> values =
+                            specValueRepo.findByAttributeId(attr.getId())
+                                    .stream()
+                                    .map(v -> {
+                                        SpecificationValueDTO dto = new SpecificationValueDTO();
+                                        dto.setId(v.getId());
+                                        dto.setText(v.getValueText());
+                                        return dto;
+                                    })
+                                    .distinct()
+                                    .toList();
 
                     SpecificationFilterDTO dto = new SpecificationFilterDTO();
                     dto.setAttribute(attr.getName());
@@ -180,6 +205,7 @@ public class ProductPublicService {
                 })
                 .toList();
     }
+
 
     private ProductListItemDTO buildProductListItem(Product p) {
 
