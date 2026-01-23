@@ -57,7 +57,7 @@ public class PaymentController {
 
         String orderCode = params.getOrDefault("vnp_TxnRef", "");
 
-        // ===== 1️⃣ VERIFY CHỮ KÝ (BẮT BUỘC) =====
+        // ===== VERIFY CHỮ KÝ (BẮT BUỘC) =====
         String secureHash = params.get("vnp_SecureHash");
 
         Map<String, String> fields = new HashMap<>(params);
@@ -94,7 +94,7 @@ public class PaymentController {
             return;
         }
 
-        // ===== 2️⃣ LẤY TRẠNG THÁI TỪ PARAM VNPAY =====
+        // ===== LẤY TRẠNG THÁI TỪ PARAM VNPAY =====
         String respCode = params.get("vnp_ResponseCode");
         String txnStatus = params.get("vnp_TransactionStatus");
 
@@ -111,7 +111,7 @@ public class PaymentController {
             orderService.markPaymentFailed(orderCode);
         }
 
-        // ===== 3️⃣ REDIRECT VỀ FE KÈM STATUS =====
+        // ===== REDIRECT VỀ FE KÈM STATUS =====
         String feReturn =
                 "http://localhost:5173/payment/return"
                         + "?orderCode=" + URLEncoder.encode(orderCode, StandardCharsets.UTF_8)

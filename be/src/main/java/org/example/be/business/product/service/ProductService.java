@@ -457,24 +457,7 @@ public class ProductService {
         Map<String, ProductVariant> variantMapBySku = oldVariants.stream()
                 .collect(Collectors.toMap(ProductVariant::getSku, v -> v));
 
-        List<UUID> oldVariantIds = oldVariants.stream()
-                .map(ProductVariant::getId)
-                .toList();
 
-        List<ProductVariantOptionValue> existingVovs =
-                oldVariantIds.isEmpty()
-                        ? List.of()
-                        : variantOptionValueRepo.findByVariantIdIn(oldVariantIds);
-
-        // key: variantId:optionId:optionValueId
-        Set<String> existingOptionKeys = existingVovs.stream()
-                .map(vov -> vov.getVariant().getId()
-                        + ":" + vov.getOption().getId()
-                        + ":" + vov.getOptionValue().getId())
-                .collect(Collectors.toSet());
-
-
-        // ===== 6. update / create variants & recompute priceMin/salePriceMin =====
         BigDecimal bestEffectivePrice = null;
         BigDecimal displayBasePrice   = null;
         BigDecimal displaySalePrice   = null;
@@ -483,62 +466,19 @@ public class ProductService {
 
             ProductVariant pv = variantMapBySku.get(v.getSku());
             if (pv == null) {
-                pv = new ProductVariant();
-                pv.setProduct(p);
-                pv.setSku(v.getSku()); // SKU mới
-                variantMapBySku.put(v.getSku(), pv);
+                continue;
             }
 
-            pv.setName(v.getName());
-            pv.setDiscountPrice(v.getDiscount_price());
             pv.setPrice(v.getPrice());
+            pv.setDiscountPrice(v.getDiscount_price());
             pv.setActive(v.isActive());
 
             variantRepo.save(pv);
 
-
-            if (v.getOptions() != null && !v.getOptions().isEmpty()) {
-
-                for (var optDto : v.getOptions()) {
-                    ProductOptionValue optionValue = optionValueRepo.findById(optDto.getOption_value_id())
-                            .orElseThrow(() ->
-                                    new RuntimeException("Option value not found: " + optDto.getOption_value_id()));
-
-                    ProductOption option = optionValue.getOption();
-
-                    String key = pv.getId() + ":" + option.getId() + ":" + optionValue.getId();
-
-                    // nếu mapping này đã tồn tại trong DB rồi => bỏ qua
-                    if (existingOptionKeys.contains(key)) {
-                        continue;
-                    }
-
-                    ProductVariantOptionValue vov = new ProductVariantOptionValue();
-                    vov.setVariant(pv);
-                    vov.setOption(option);
-                    vov.setOptionValue(optionValue);
-
-                    variantOptionValueRepo.save(vov);
-                    existingOptionKeys.add(key);
-                }
-            }
-
-            Set<String> requestSkus = req.getVariants() == null
-                    ? Set.of()
-                    : req.getVariants().stream()
-                    .map(ProductCreateRequest.VariantDTO::getSku)
-                    .collect(Collectors.toSet());
-
-            for (ProductVariant dbVariant : oldVariants) {
-                if (!requestSkus.contains(dbVariant.getSku())) {
-                    dbVariant.setActive(false);
-                    variantRepo.save(dbVariant);
-                }
-            }
-
+            // ===== tính giá hiển thị =====
             BigDecimal price = v.getPrice();
             BigDecimal discountPrice = v.getDiscount_price();
-            BigDecimal effectivePrice = (discountPrice != null ? discountPrice : price);
+            BigDecimal effectivePrice = discountPrice != null ? discountPrice : price;
 
             if (effectivePrice != null) {
                 if (bestEffectivePrice == null || effectivePrice.compareTo(bestEffectivePrice) < 0) {

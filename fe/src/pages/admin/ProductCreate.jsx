@@ -838,7 +838,7 @@ function ProductCreate() {
     : "Chi tiết sản phẩm";
 
   const formDisabled = saving || loadingDetail || loadingMasters || isViewMode;
-
+  const formDisabledEdit = saving || loadingDetail || loadingMasters || isViewMode || isEditMode;
   return (
     <div className="d-flex vh-100 bg-light text-dark">
       <Sidebar
@@ -1150,7 +1150,7 @@ function ProductCreate() {
             <div className="card shadow-sm mb-4" style={{ maxWidth: "none" }}>
               <div className="card-header bg-white d-flex justify-content-between align-items-center">
                 <strong>4) Option nhóm (bắt buộc) → sinh biến thể</strong>
-                {!isViewMode && (
+                {isCreateMode && (
                   <div className="d-flex gap-2 align-items-center">
                     <button
                       className="btn btn-sm btn-outline-secondary"
@@ -1184,7 +1184,7 @@ function ProductCreate() {
                     <div key={g.groupId} className="mb-3 border rounded p-2">
                       <div className="d-flex align-items-center justify-content-between">
                         <div className="fw-semibold">{g.name}</div>
-                        {!isViewMode && (
+                        {isCreateMode && (
                           <div className="d-flex gap-2">
                             <button
                               className="btn btn-link p-0 text-danger"
@@ -1209,7 +1209,7 @@ function ProductCreate() {
                               onChange={() =>
                                 toggleOptionValue(g.groupId, val.id)
                               }
-                              disabled={formDisabled}
+                              disabled={formDisabledEdit}
                             />
                             {val.label}
                           </label>
@@ -1293,7 +1293,7 @@ function ProductCreate() {
                             className="form-check-input"
                             checked={v.included}
                             onChange={() => toggleVariantIncluded(v.id)}
-                            disabled={formDisabled}
+                            disabled={formDisabledEdit}
                           />
                         </td>
                         <td>
@@ -1311,7 +1311,7 @@ function ProductCreate() {
                             onChange={(e) =>
                               updateVariantField(v.id, "sku", e.target.value)
                             }
-                            disabled={formDisabled}
+                            disabled={formDisabledEdit}
                           />
                         </td>
                         <td>
@@ -1327,7 +1327,6 @@ function ProductCreate() {
                                 e.target.value ? Number(e.target.value) : null
                               )
                             }
-                            disabled={formDisabled}
                           />
                         </td>
                         <td>
@@ -1343,7 +1342,6 @@ function ProductCreate() {
                                 e.target.value ? Number(e.target.value) : null
                               )
                             }
-                            disabled={formDisabled}
                           />
                         </td>
                       </tr>

@@ -100,7 +100,7 @@ QUY TẮC BẮT BUỘC:
 - Không nhắc đến từ “AI”, “dữ liệu”, “JSON” hay “hệ thống”
 
 YÊU CẦU BUILD TRỌN BỘ (BẮT BUỘC):
-- Khi khách yêu cầu "build máy", "mua máy", "chơi game"
+- Khi khách yêu cầu "build máy", "mua máy", "chơi game", "build"
 → PHẢI tư vấn TRỌN BỘ GỒM:
   1. 01 PC / Case
   2. 01 Màn hình

@@ -147,7 +147,7 @@ function SpecAttributeCreate() {
 
   const pageTitle = isCreateMode ? "Tạo mới Thuộc tính kỹ thuật" : "Chỉnh sửa Thuộc tính kỹ thuật";
   const formDisabled = saving || loadingDetail;
-
+  const formDisabledEdit = saving || loadingDetail || isEditMode;
   return (
     <div className="d-flex vh-100 bg-light text-dark">
       <Sidebar
@@ -238,7 +238,7 @@ function SpecAttributeCreate() {
                               placeholder='VD: "Ryzen 7 7840HS" / "15.6\" FHD 144Hz" / "16GB" ...'
                               value={v.spec_value_text}
                               onChange={(e) => updateRow(v.id, e.target.value)}
-                              disabled={formDisabled}
+                              disabled={formDisabledEdit}
                             />
                           </td>
                           <td className="text-end">

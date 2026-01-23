@@ -315,12 +315,6 @@ export default function ProductManagement() {
               Đang tải danh sách sản phẩm...
             </div>
           )}
-          {loadError && (
-            <div className="mb-3 text-danger small">
-              Lỗi tải danh sách: {loadError}
-            </div>
-          )}
-
           {/* Bảng */}
           <div
             className="shadow rounded overflow-hidden w-100"

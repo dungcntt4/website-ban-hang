@@ -26,10 +26,10 @@ public class InventoryItem extends Auditable {
     private ProductVariant variant;
 
     @Column(name = "stock_on_hand", nullable = false)
-    private long stockOnHand = 0;
+    private long stockOnHand = 0;// số lượng hàng thực tế
 
     @Column(name = "stock_reserved", nullable = false)
-    private long stockReserved = 0;
+    private long stockReserved = 0;// số lượng hàng chờ
 
     // getters/setters
 }

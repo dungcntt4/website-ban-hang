@@ -139,7 +139,7 @@ function OptionCreate() {
 
   const pageTitle = isCreateMode ? "Tạo mới Option" : "Chỉnh sửa Option";
   const formDisabled = saving || loadingDetail;
-
+  const formDisabledEdit = saving || loadingDetail || isEditMode;
   return (
     <div className="d-flex vh-100 bg-light text-dark">
       <Sidebar
@@ -228,7 +228,7 @@ function OptionCreate() {
                               placeholder='VD: "8GB" / "1TB" / "Đen"...'
                               value={v.value}
                               onChange={(e) => updateRow(v.id, e.target.value)}
-                              disabled={formDisabled}
+                              disabled={formDisabledEdit}
                             />
                           </td>
                           <td className="text-end">
